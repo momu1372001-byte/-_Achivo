@@ -1,0 +1,23 @@
+{
+  "name": "Achivo App",
+  "short_name": "Achivo",
+  "id": "https://achivo-nine.vercel.app",
+  "description": "Achivo is a productivity web app to manage tasks, goals, and calendar in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1976d2",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
