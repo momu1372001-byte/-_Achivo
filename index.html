@@ -5,9 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نجزت – Achievo</title>
+    <link rel="manifest" href="/manifest.json">
+
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      console.log("✅ Service Worker registered:", reg);
+
+      // تحديث عند توفر نسخة جديدة
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            // 🔔 فيه تحديث جديد
+            window.dispatchEvent(new Event("swUpdated"));
+          }
+        });
+      });
+    });
+  }
+</script>
+
+
   </body>
 </html>

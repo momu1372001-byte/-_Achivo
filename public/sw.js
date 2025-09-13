@@ -1,17 +1,19 @@
-const CACHE_NAME = "app-cache-v1"; // كل ما تعدل النسخة غير الرقم
-const urlsToCache = ["/", "/index.html"];
+const CACHE_NAME = "achivo-cache-v1";
 
-// Install event
+// الملفات الأساسية اللي تتخزن في الكاش
+const urlsToCache = ["/", "/index.html", "/manifest.json"];
+
+// install
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(urlsToCache);
     })
   );
-  self.skipWaiting(); // ✅ يخلي النسخة الجديدة تشتغل فورًا
+  self.skipWaiting(); // ✅ يضمن تنصيب النسخة الجديدة مباشرة
 });
 
-// Activate event
+// activate
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) =>
@@ -24,10 +26,10 @@ self.addEventListener("activate", (event) => {
       )
     )
   );
-  self.clients.claim(); // ✅ يخلي التحديث يبان للمستخدم مباشرة
+  self.clients.claim(); // ✅ يربط النسخة الجديدة فورًا
 });
 
-// Fetch event
+// fetch
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
