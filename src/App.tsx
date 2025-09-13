@@ -11,10 +11,21 @@ import { initialCategories, initialTasks, initialGoals } from './data/initialDat
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // ✅ نخزن كل حاجة في LocalStorage
-  const [tasks, setTasks] = useLocalStorage<Task[]>('productivity-tasks', initialTasks);
-  const [categories, setCategories] = useLocalStorage<Category[]>('productivity-categories', initialCategories);
-  const [goals, setGoals] = useLocalStorage<Goal[]>('productivity-goals', initialGoals);
+  // ✅ استخدم البيانات المخزنة إذا موجودة، وإلا استعمل initialData أول مرة بس
+  const [tasks, setTasks] = useLocalStorage<Task[]>(
+    'productivity-tasks',
+    localStorage.getItem('productivity-tasks') ? [] : initialTasks
+  );
+
+  const [categories, setCategories] = useLocalStorage<Category[]>(
+    'productivity-categories',
+    localStorage.getItem('productivity-categories') ? [] : initialCategories
+  );
+
+  const [goals, setGoals] = useLocalStorage<Goal[]>(
+    'productivity-goals',
+    localStorage.getItem('productivity-goals') ? [] : initialGoals
+  );
 
   // ✅ إضافة مهمة جديدة
   const handleTaskAdd = (newTask: Omit<Task, 'id'>) => {
