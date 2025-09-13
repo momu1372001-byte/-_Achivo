@@ -6,29 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نجزت – Achievo</title>
     <link rel="manifest" href="/manifest.json">
-
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- 🚀 هذا السطر أساسي لتشغيل React -->
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- 🔧 تسجيل الـ Service Worker -->
     <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").then((reg) => {
-      console.log("✅ Service Worker registered:", reg);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").then((reg) => {
+          console.log("✅ Service Worker registered:", reg);
 
-      // تحديث عند توفر نسخة جديدة
-      reg.addEventListener("updatefound", () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener("statechange", () => {
-          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-            // 🔔 فيه تحديث جديد
-            window.dispatchEvent(new Event("swUpdated"));
-          }
+          reg.addEventListener("updatefound", () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                console.log("🔔 تحديث جديد متاح!");
+                window.dispatchEvent(new Event("swUpdated"));
+              }
+            });
+          });
         });
-      });
-    });
-  }
-</script>
-
-
+      }
+    </script>
   </body>
 </html>

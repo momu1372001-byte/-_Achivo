@@ -1,35 +1,36 @@
 const CACHE_NAME = "achivo-cache-v1";
 
-// الملفات الأساسية اللي تتخزن في الكاش
-const urlsToCache = ["/", "/index.html", "/manifest.json"];
-
-// install
+// install: نضيف الأساسيات
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
+      return cache.addAll([
+        "/", 
+        "/index.html", 
+        "/manifest.json"
+      ]);
     })
   );
-  self.skipWaiting(); // ✅ يضمن تنصيب النسخة الجديدة مباشرة
+  self.skipWaiting(); // تحديث فوري
 });
 
-// activate
+// activate: نحذف أي كاش قديم
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) =>
       Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            return caches.delete(cache); // ✅ يحذف الكاش القديم
+            return caches.delete(cache);
           }
         })
       )
     )
   );
-  self.clients.claim(); // ✅ يربط النسخة الجديدة فورًا
+  self.clients.claim();
 });
 
-// fetch
+// fetch: الأول نجرب الشبكة، لو فشلت نجيب من الكاش
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
