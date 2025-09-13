@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { TaskManager } from './components/TaskManager';
@@ -10,28 +10,34 @@ import { initialCategories, initialTasks, initialGoals } from './data/initialDat
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // ✅ نخزن كل حاجة في LocalStorage
   const [tasks, setTasks] = useLocalStorage<Task[]>('productivity-tasks', initialTasks);
   const [categories, setCategories] = useLocalStorage<Category[]>('productivity-categories', initialCategories);
   const [goals, setGoals] = useLocalStorage<Goal[]>('productivity-goals', initialGoals);
 
+  // ✅ إضافة مهمة جديدة
   const handleTaskAdd = (newTask: Omit<Task, 'id'>) => {
     const task: Task = {
       ...newTask,
-      id: Date.now().toString(),
+      id: Date.now().toString(), // معرف فريد
     };
     setTasks(prev => [...prev, task]);
   };
 
+  // ✅ تحديث مهمة
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(prev => prev.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    ));
+    setTasks(prev =>
+      prev.map(task => (task.id === updatedTask.id ? updatedTask : task))
+    );
   };
 
+  // ✅ حذف مهمة
   const handleTaskDelete = (taskId: string) => {
     setTasks(prev => prev.filter(task => task.id !== taskId));
   };
 
+  // ✅ إضافة هدف جديد
   const handleGoalAdd = (newGoal: Omit<Goal, 'id'>) => {
     const goal: Goal = {
       ...newGoal,
@@ -40,12 +46,14 @@ function App() {
     setGoals(prev => [...prev, goal]);
   };
 
+  // ✅ تحديث هدف
   const handleGoalUpdate = (updatedGoal: Goal) => {
-    setGoals(prev => prev.map(goal => 
-      goal.id === updatedGoal.id ? updatedGoal : goal
-    ));
+    setGoals(prev =>
+      prev.map(goal => (goal.id === updatedGoal.id ? updatedGoal : goal))
+    );
   };
 
+  // ✅ هنا نحدد التبويب اللي يظهر
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -78,10 +86,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
+      {/* ✅ الهيدر */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="pb-8">
-        {renderActiveTab()}
-      </main>
+
+      {/* ✅ المحتوى */}
+      <main className="pb-8">{renderActiveTab()}</main>
     </div>
   );
 }
