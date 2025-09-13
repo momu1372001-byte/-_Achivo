@@ -4,17 +4,19 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
-      return item && item !== 'undefined' && item !== 'null' ? JSON.parse(item, (key, value) => {
-        // Convert date strings back to Date objects
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
-          return new Date(value);
-        }
-        return value;
-      }) : initialValue;
+      if (item && item !== 'undefined' && item !== 'null') {
+        return JSON.parse(item, (k, value) => {
+          // ✅ رجّع التاريخ كـ Date object لو كان string
+          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+            return new Date(value);
+          }
+          return value;
+        });
+      }
+      return initialValue;
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
-      // Clear corrupted data
-      window.localStorage.removeItem(key);
+      // ❌ ما نمسحش البيانات، نرجع بس initialValue
       return initialValue;
     }
   });
@@ -31,6 +33,22 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
       console.error(`Error setting localStorage key "${key}":`, error);
     }
   };
+
+  // ✅ تحديث أوتوماتيكي لو localStorage اتغير من تاب تاني
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const item = window.localStorage.getItem(key);
+        if (item) {
+          setStoredValue(JSON.parse(item));
+        }
+      } catch (error) {
+        console.error(`Error syncing localStorage key "${key}":`, error);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [key]);
 
   return [storedValue, setValue];
 }
