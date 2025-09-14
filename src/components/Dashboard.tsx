@@ -1,5 +1,25 @@
-import React from 'react';
-import { CheckCircle, Clock, Target, TrendingUp, Calendar, Award } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle,
+  Clock,
+  Calendar,
+  Award,
+  AlertTriangle,
+  Flame,
+  Trophy,
+  Bell,
+} from 'lucide-react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Task, Goal } from '../types';
 
 interface DashboardProps {
@@ -7,190 +27,303 @@ interface DashboardProps {
   goals: Goal[];
 }
 
+// 🔹 Hook للذكاء الاصطناعي: AI Insights
+const useAIInsights = (tasks: Task[]) => {
+  const [insights, setInsights] = useState<string[]>([]);
+
+  useEffect(() => {
+    const suggestions: string[] = [];
+
+    const overdue = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < new Date());
+    if (overdue.length > 0)
+      suggestions.push(`⚠️ لديك ${overdue.length} مهمة متأخرة! حاول إنجازها أولًا.`);
+
+    const upcoming = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= new Date());
+    if (upcoming.length > 0)
+      suggestions.push(`⏰ استعد لمهامك القادمة: ${upcoming[0].title}`);
+
+    const done = tasks.filter(t => t.status === 'done');
+    if (done.length > 0)
+      suggestions.push(`✅ لقد أنجزت ${done.length} مهمة! أحسنت 👍`);
+
+    setInsights(suggestions);
+  }, [tasks]);
+
+  return insights;
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
-  const completedTasks = tasks.filter(task => task.completed);
-  const pendingTasks = tasks.filter(task => !task.completed);
-  const todayTasks = tasks.filter(task => {
-    const today = new Date();
-    const taskDate = task.dueDate;
-    return taskDate && 
-           new Date(taskDate).toDateString() === today.toDateString();
-  });
+  // 🔹 تقسيم المهام
+  const doneTasks = tasks.filter((t) => t.status === 'done');
+  const inProgressTasks = tasks.filter((t) => t.status === 'in-progress');
+  const todoTasks = tasks.filter((t) => t.status === 'todo');
 
-  const totalTimeSpent = tasks.reduce((total, task) => total + task.timeSpent, 0);
-  const averageTimePerTask = tasks.length > 0 ? Math.round(totalTimeSpent / tasks.length) : 0;
+  // 🔹 المهام المتأخرة
+  const overdueTasks = tasks.filter(
+    (t) => t.dueDate && t.dueDate < new Date() && t.status !== 'done'
+  );
 
-  const stats = [
-    {
-      title: 'المهام المكتملة',
-      value: completedTasks.length,
-      total: tasks.length,
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200',
-    },
-    {
-      title: 'المهام المتبقية',
-      value: pendingTasks.length,
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-    },
-    {
-      title: 'مهام اليوم',
-      value: todayTasks.length,
-      icon: Calendar,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-    },
-    {
-      title: 'الوقت المستغرق',
-      value: `${Math.floor(totalTimeSpent / 60)}س ${totalTimeSpent % 60}د`,
-      icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-    },
+  // 🔹 معدل الإنجاز
+  const completionRate =
+    tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
+
+  // 🔹 توزيع المهام PieChart
+  const pieData = [
+    { name: 'منجزة', value: doneTasks.length, color: '#22c55e' },
+    { name: 'قيد التنفيذ', value: inProgressTasks.length, color: '#3b82f6' },
+    { name: 'متبقية', value: todoTasks.length, color: '#a1a1aa' },
   ];
 
-  const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+  // 🔹 إنتاجية الأسبوع BarChart
+  const weekDays = ['أحد', 'إثن', 'ثل', 'أرب', 'خمس', 'جمع', 'سبت'];
+  const weeklyData = weekDays.map((day, i) => {
+    const dayTasks = tasks.filter(
+      (t) => t.dueDate && t.dueDate.getDay() === i && t.status === 'done'
+    );
+    return { day, value: dayTasks.length };
+  });
+
+  // 🔹 Upcoming Tasks (أقرب 5 مهام)
+  const upcomingTasks = useMemo(() => {
+    return tasks
+      .filter((t) => t.dueDate && t.dueDate >= new Date())
+      .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
+      .slice(0, 5);
+  }, [tasks]);
+
+  // 🔹 Streaks
+  const streak = useMemo(() => {
+    let currentStreak = 0;
+    let date = new Date();
+    while (true) {
+      const dayTasks = doneTasks.filter(
+        (t) => t.dueDate && t.dueDate.toDateString() === date.toDateString()
+      );
+      if (dayTasks.length > 0) {
+        currentStreak++;
+        date.setDate(date.getDate() - 1);
+      } else break;
+    }
+    return currentStreak;
+  }, [doneTasks]);
+
+  // 🔹 Achievements
+  const achievements = [];
+  if (doneTasks.length >= 10)
+    achievements.push({
+      title: 'أنجزت 10 مهام!',
+      icon: Trophy,
+      color: 'text-yellow-600',
+    });
+  if (streak >= 3)
+    achievements.push({
+      title: `🔥 سلسلة ${streak} أيام!`,
+      icon: Flame,
+      color: 'text-red-600',
+    });
+
+  // 🔹 AI Insights
+  const aiInsights = useAIInsights(tasks);
+
+  // ✅ إشعارات ذكية
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🎉 مرحباً بك!', {
+        body: 'ابدأ يومك بإنجاز المهام 👌',
+        icon: '/icons/icon-192.png',
+      });
+
+      overdueTasks.forEach((task) => {
+        new Notification('⚠️ مهمة متأخرة', {
+          body: `${task.title} كان موعدها ${task.dueDate!.toLocaleDateString(
+            'ar-EG'
+          )}`,
+          icon: '/icons/icon-192.png',
+        });
+      });
+
+      upcomingTasks.forEach((task) => {
+        const due = task.dueDate!;
+        const diff = due.getTime() - new Date().getTime();
+        if (diff <= 24 * 60 * 60 * 1000) {
+          new Notification('⏰ تذكير بمهمة', {
+            body: `${task.title} غداً (${due.toLocaleDateString('ar-EG')})`,
+            icon: '/icons/icon-192.png',
+          });
+        }
+      });
+    }
+  }, [overdueTasks, upcomingTasks]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بك في لوحة التحكم</h2>
-        <p className="text-gray-600">تتبع تقدمك وإنجازاتك اليومية</p>
-      </div>
+      <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        <Bell className="w-7 h-7 text-blue-600" /> لوحة التحكم
+      </h2>
 
-      {/* Stats Grid */}
+      {/* 🔹 Cards Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => {
+        {[
+          {
+            title: 'منجزة',
+            value: doneTasks.length,
+            total: tasks.length,
+            icon: CheckCircle,
+            color: 'text-green-600',
+            bg: 'bg-green-50',
+          },
+          {
+            title: 'قيد التنفيذ',
+            value: inProgressTasks.length,
+            icon: Clock,
+            color: 'text-blue-600',
+            bg: 'bg-blue-50',
+          },
+          {
+            title: 'متبقية',
+            value: todoTasks.length,
+            icon: Calendar,
+            color: 'text-purple-600',
+            bg: 'bg-purple-50',
+          },
+          {
+            title: 'متأخرة',
+            value: overdueTasks.length,
+            icon: AlertTriangle,
+            color: 'text-red-600',
+            bg: 'bg-red-50',
+          },
+        ].map((stat, i) => {
           const Icon = stat.icon;
           return (
             <div
-              key={index}
-              className={`${stat.bgColor} ${stat.borderColor} border rounded-xl p-6 transition-all duration-300 hover:shadow-lg hover:scale-105`}
+              key={i}
+              className={`${stat.bg} border rounded-xl p-6 flex justify-between items-center shadow-sm`}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                    {stat.total && (
-                      <span className="text-sm text-gray-500 font-normal">/{stat.total}</span>
-                    )}
-                  </p>
-                </div>
-                <Icon className={`w-12 h-12 ${stat.color}`} />
+              <div>
+                <p className="text-sm text-gray-500">{stat.title}</p>
+                <p className="text-2xl font-bold">
+                  {stat.value}
+                  {stat.total && stat.title === 'منجزة' && (
+                    <span className="text-sm text-gray-400">/{stat.total}</span>
+                  )}
+                </p>
               </div>
+              <Icon className={`w-10 h-10 ${stat.color}`} />
             </div>
           );
         })}
       </div>
 
-      {/* Progress Section */}
+      {/* 🔹 Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Completion Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">معدل الإنجاز</h3>
-            <Award className="w-6 h-6 text-yellow-500" />
+        {/* معدل الإنجاز */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-semibold">معدل الإنجاز</h3>
+            <Award className="text-yellow-500" />
           </div>
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">التقدم الحالي</span>
-              <span className="text-sm font-medium text-gray-900">{completionRate}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${completionRate}%` }}
-              ></div>
-            </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full"
+              style={{ width: `${completionRate}%` }}
+            ></div>
           </div>
+          <p className="text-sm text-gray-600 mt-2">{completionRate}% مكتملة</p>
         </div>
 
-        {/* Goals Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">الأهداف</h3>
-            <Target className="w-6 h-6 text-blue-500" />
-          </div>
-          <div className="space-y-3">
-            {goals.slice(0, 3).map((goal) => (
-              <div key={goal.id} className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-gray-700">{goal.title}</span>
-                    <span className="text-xs text-gray-500">{goal.current}/{goal.target}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {goals.length === 0 && (
-              <p className="text-gray-500 text-sm text-center py-4">لم يتم تعيين أهداف بعد</p>
-            )}
-          </div>
+        {/* PieChart */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-4">توزيع المهام</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={80} label>
+                {pieData.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Recent Tasks */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">المهام الحديثة</h3>
-        <div className="space-y-3">
-          {tasks.slice(0, 5).map((task) => (
-            <div
-              key={task.id}
-              className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
-                task.completed
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <CheckCircle 
-                  className={`w-5 h-5 ${
-                    task.completed ? 'text-green-500' : 'text-gray-300'
-                  }`}
-                />
-                <div>
-                  <p className={`font-medium ${
-                    task.completed ? 'text-green-800 line-through' : 'text-gray-900'
-                  }`}>
-                    {task.title}
-                  </p>
-                  <p className="text-sm text-gray-500">{task.category}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                  task.priority === 'high' 
-                    ? 'bg-red-100 text-red-700'
-                    : task.priority === 'medium'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
-                </span>
-                {task.timeSpent > 0 && (
-                  <span className="text-xs text-gray-500">
-                    {task.timeSpent}د
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          {tasks.length === 0 && (
-            <p className="text-gray-500 text-center py-8">لا توجد مهام بعد. ابدأ بإضافة مهامك الأولى!</p>
+      {/* 🔹 Weekly Productivity + Upcoming Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* BarChart */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-4">إنتاجية الأسبوع</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={weeklyData}>
+              <XAxis dataKey="day" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Upcoming Tasks */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-4">المهام القادمة</h3>
+          {upcomingTasks.length > 0 ? (
+            <ul className="space-y-2">
+              {upcomingTasks.map((t) => (
+                <li key={t.id} className="flex justify-between text-sm border-b pb-2">
+                  <span>{t.title}</span>
+                  <span className="text-gray-500">{t.dueDate!.toLocaleDateString('ar-EG')}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 text-sm">لا توجد مهام قادمة 🎉</p>
+          )}
+        </div>
+      </div>
+
+      {/* 🔹 Streaks + Achievements + AI Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Streak */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-2">سلسلة الإنجاز</h3>
+          <p className="text-2xl font-bold text-red-600">{streak} يوم متتالي</p>
+        </div>
+
+        {/* Achievements */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-2">إنجازاتك</h3>
+          {achievements.length > 0 ? (
+            <ul className="space-y-2">
+              {achievements.map((a, i) => {
+                const Icon = a.icon;
+                return (
+                  <li key={i} className="flex items-center space-x-2">
+                    <Icon className={`w-5 h-5 ${a.color}`} />
+                    <span>{a.title}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-gray-500 text-sm">ابدأ بإنجاز مهامك لتحقق إنجازات 🏆</p>
+          )}
+        </div>
+
+        {/* AI Insights */}
+        <div className="bg-white p-6 rounded-xl border shadow-sm">
+          <h3 className="font-semibold mb-2">اقتراحات ذكية 🤖</h3>
+          {aiInsights.length > 0 ? (
+            <ul className="space-y-1 text-sm text-gray-700">
+              {aiInsights.map((insight, i) => (
+                <li key={i}>• {insight}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-400 text-sm">جاري تحليل مهامك...</p>
           )}
         </div>
       </div>

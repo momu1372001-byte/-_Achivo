@@ -11,36 +11,31 @@ import { initialCategories, initialTasks, initialGoals } from './data/initialDat
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // ✅ استخدم البيانات المخزنة إذا موجودة، وإلا استعمل initialData أول مرة بس
+  // ✅ استخدم البيانات المخزنة إذا موجودة، وإلا استعمل initialData أول مرة
   const [tasks, setTasks] = useLocalStorage<Task[]>(
     'productivity-tasks',
-    localStorage.getItem('productivity-tasks') ? [] : initialTasks
+    localStorage.getItem('productivity-tasks') ? JSON.parse(localStorage.getItem('productivity-tasks')!) : initialTasks
   );
 
   const [categories, setCategories] = useLocalStorage<Category[]>(
     'productivity-categories',
-    localStorage.getItem('productivity-categories') ? [] : initialCategories
+    localStorage.getItem('productivity-categories') ? JSON.parse(localStorage.getItem('productivity-categories')!) : initialCategories
   );
 
   const [goals, setGoals] = useLocalStorage<Goal[]>(
     'productivity-goals',
-    localStorage.getItem('productivity-goals') ? [] : initialGoals
+    localStorage.getItem('productivity-goals') ? JSON.parse(localStorage.getItem('productivity-goals')!) : initialGoals
   );
 
   // ✅ إضافة مهمة جديدة
   const handleTaskAdd = (newTask: Omit<Task, 'id'>) => {
-    const task: Task = {
-      ...newTask,
-      id: Date.now().toString(), // معرف فريد
-    };
+    const task: Task = { ...newTask, id: Date.now().toString() };
     setTasks(prev => [...prev, task]);
   };
 
   // ✅ تحديث مهمة
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(prev =>
-      prev.map(task => (task.id === updatedTask.id ? updatedTask : task))
-    );
+    setTasks(prev => prev.map(task => (task.id === updatedTask.id ? updatedTask : task)));
   };
 
   // ✅ حذف مهمة
@@ -50,21 +45,16 @@ function App() {
 
   // ✅ إضافة هدف جديد
   const handleGoalAdd = (newGoal: Omit<Goal, 'id'>) => {
-    const goal: Goal = {
-      ...newGoal,
-      id: Date.now().toString(),
-    };
+    const goal: Goal = { ...newGoal, id: Date.now().toString() };
     setGoals(prev => [...prev, goal]);
   };
 
   // ✅ تحديث هدف
   const handleGoalUpdate = (updatedGoal: Goal) => {
-    setGoals(prev =>
-      prev.map(goal => (goal.id === updatedGoal.id ? updatedGoal : goal))
-    );
+    setGoals(prev => prev.map(goal => (goal.id === updatedGoal.id ? updatedGoal : goal)));
   };
 
-  // ✅ هنا نحدد التبويب اللي يظهر
+  // ✅ التبويب النشط
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -97,10 +87,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* ✅ الهيدر */}
+      {/* الهيدر */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* ✅ المحتوى */}
+      {/* المحتوى */}
       <main className="pb-8">{renderActiveTab()}</main>
     </div>
   );

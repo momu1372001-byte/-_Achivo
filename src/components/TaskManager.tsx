@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
-import { Plus, Search, Filter, Clock, Calendar, Flag, CheckCircle, Edit, Trash2, Play, Pause } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Clock, Calendar, Flag, CheckCircle, Trash2, Play, Pause } from 'lucide-react';
 import { Task, Category } from '../types';
 
 interface TaskManagerProps {
@@ -33,23 +32,25 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     dueDate: '',
   });
 
-  // Filter tasks
+  // ✅ فلترة المهام
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || task.category === filterCategory;
-    
+
     return matchesSearch && matchesPriority && matchesCategory;
   });
 
+  // ✅ إضافة مهمة جديدة
   const handleAddTask = () => {
     if (!newTask.title.trim()) return;
 
     onTaskAdd({
       title: newTask.title,
       description: newTask.description,
-      completed: false,
+      status: 'todo',
       priority: newTask.priority,
       category: newTask.category,
       dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
@@ -67,16 +68,25 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     setShowAddForm(false);
   };
 
-  const toggleTaskComplete = (task: Task) => {
+  // ✅ تغيير حالة المهمة
+  const toggleTaskStatus = (task: Task) => {
+    const newStatus =
+      task.status === 'todo'
+        ? 'in-progress'
+        : task.status === 'in-progress'
+        ? 'done'
+        : 'todo';
+
     onTaskUpdate({
       ...task,
-      completed: !task.completed,
+      status: newStatus,
     });
   };
 
+  // ✅ إدارة المؤقت
   const toggleTimer = (taskId: string) => {
     if (activeTimer === taskId) {
-      // Stop timer
+      // إيقاف المؤقت
       const task = tasks.find(t => t.id === taskId);
       if (task) {
         onTaskUpdate({
@@ -87,13 +97,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       setActiveTimer(null);
       setTimerSeconds(0);
     } else {
-      // Start timer
+      // تشغيل المؤقت
       setActiveTimer(taskId);
       setTimerSeconds(0);
     }
   };
 
-  // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (activeTimer) {
@@ -126,7 +135,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </button>
       </div>
 
-      {/* Filters */}
+      {/* 🔍 الفلاتر */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
@@ -139,7 +148,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          
+
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
@@ -164,12 +173,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
       </div>
 
-      {/* Add Task Form */}
+      {/* 📝 نموذج إضافة مهمة */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">إضافة مهمة جديدة</h3>
-            
+
             <div className="space-y-4">
               <input
                 type="text"
@@ -178,7 +187,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              
+
               <textarea
                 placeholder="وصف المهمة (اختياري)"
                 value={newTask.description}
@@ -186,7 +195,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 rows={3}
               />
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <select
                   value={newTask.priority}
@@ -197,7 +206,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                   <option value="medium">أولوية متوسطة</option>
                   <option value="high">أولوية عالية</option>
                 </select>
-                
+
                 <select
                   value={newTask.category}
                   onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
@@ -208,7 +217,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                   ))}
                 </select>
               </div>
-              
+
               <input
                 type="date"
                 value={newTask.dueDate}
@@ -216,7 +225,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            
+
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={handleAddTask}
@@ -235,61 +244,71 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
       )}
 
-      {/* Tasks List */}
+      {/* 📋 قائمة المهام */}
       <div className="space-y-4">
         {filteredTasks.map((task) => (
           <div
             key={task.id}
             className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md ${
-              task.completed ? 'opacity-75' : ''
+              task.status === 'done' ? 'opacity-75' : ''
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4 flex-1">
                 <button
-                  onClick={() => toggleTaskComplete(task)}
+                  onClick={() => toggleTaskStatus(task)}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-                    task.completed
+                    task.status === 'done'
                       ? 'bg-green-500 border-green-500 text-white'
+                      : task.status === 'in-progress'
+                      ? 'bg-yellow-500 border-yellow-500 text-white'
                       : 'border-gray-300 hover:border-green-400'
                   }`}
                 >
-                  {task.completed && <CheckCircle className="w-4 h-4" />}
+                  {task.status === 'done' && <CheckCircle className="w-4 h-4" />}
                 </button>
-                
+
                 <div className="flex-1">
-                  <h3 className={`text-lg font-semibold ${
-                    task.completed ? 'line-through text-gray-500' : 'text-gray-900'
-                  }`}>
+                  <h3
+                    className={`text-lg font-semibold ${
+                      task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'
+                    }`}
+                  >
                     {task.title}
                   </h3>
                   {task.description && (
                     <p className="text-gray-600 mt-1">{task.description}</p>
                   )}
-                  
+
                   <div className="flex items-center space-x-4 mt-2">
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      task.priority === 'high' 
-                        ? 'bg-red-100 text-red-700'
-                        : task.priority === 'medium'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full font-medium ${
+                        task.priority === 'high'
+                          ? 'bg-red-100 text-red-700'
+                          : task.priority === 'medium'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
                       <Flag className="w-3 h-3 inline mr-1" />
-                      {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
+                      {task.priority === 'high'
+                        ? 'عالية'
+                        : task.priority === 'medium'
+                        ? 'متوسطة'
+                        : 'منخفضة'}
                     </span>
-                    
+
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                       {task.category}
                     </span>
-                    
+
                     {task.dueDate && (
                       <span className="text-xs text-gray-500 flex items-center">
                         <Calendar className="w-3 h-3 mr-1" />
                         {new Date(task.dueDate).toLocaleDateString('ar-SA')}
                       </span>
                     )}
-                    
+
                     {task.timeSpent > 0 && (
                       <span className="text-xs text-gray-500 flex items-center">
                         <Clock className="w-3 h-3 mr-1" />
@@ -299,9 +318,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2">
-                {/* Timer */}
+                {/* ⏱️ المؤقت */}
                 <div className="flex items-center space-x-2">
                   {activeTimer === task.id && (
                     <span className="text-sm font-mono text-blue-600">
@@ -323,7 +342,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                     )}
                   </button>
                 </div>
-                
+
                 <button
                   onClick={() => onTaskDelete(task.id)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
@@ -334,7 +353,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
             </div>
           </div>
         ))}
-        
+
         {filteredTasks.length === 0 && (
           <div className="text-center py-12">
             <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
