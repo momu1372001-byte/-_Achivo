@@ -8,29 +8,40 @@ import { Task, Category, Goal } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { initialCategories, initialTasks, initialGoals } from './data/initialData';
 
+// ✅ استدعاء OpenAI من المتصفح (اختبار)
+import OpenAI from "openai";
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true,
+});
+
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // ✅ استخدم البيانات المخزنة إذا موجودة، وإلا استعمل initialData أول مرة
   const [tasks, setTasks] = useLocalStorage<Task[]>(
     'productivity-tasks',
-    localStorage.getItem('productivity-tasks') ? JSON.parse(localStorage.getItem('productivity-tasks')!) : initialTasks
+    localStorage.getItem('productivity-tasks')
+      ? JSON.parse(localStorage.getItem('productivity-tasks')!)
+      : initialTasks
   );
 
   const [categories, setCategories] = useLocalStorage<Category[]>(
     'productivity-categories',
-    localStorage.getItem('productivity-categories') ? JSON.parse(localStorage.getItem('productivity-categories')!) : initialCategories
+    localStorage.getItem('productivity-categories')
+      ? JSON.parse(localStorage.getItem('productivity-categories')!)
+      : initialCategories
   );
 
   const [goals, setGoals] = useLocalStorage<Goal[]>(
     'productivity-goals',
-    localStorage.getItem('productivity-goals') ? JSON.parse(localStorage.getItem('productivity-goals')!) : initialGoals
+    localStorage.getItem('productivity-goals')
+      ? JSON.parse(localStorage.getItem('productivity-goals')!)
+      : initialGoals
   );
 
-  // ✅ AI insights state
+  // ✅ تحليلات المهام
   const [aiInsights, setAiInsights] = useState<string | null>(null);
 
-  // ✅ استدعاء API السيرفر لما المهام تتغير
   useEffect(() => {
     const fetchInsights = async () => {
       try {
@@ -51,7 +62,27 @@ function App() {
     }
   }, [tasks]);
 
-  // ✅ إضافة مهمة جديدة
+  // ✅ حقل سؤال مباشر لـ OpenAI
+  const [userPrompt, setUserPrompt] = useState("");
+  const [aiReply, setAiReply] = useState<string | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  const handleAskAI = async () => {
+    if (!userPrompt.trim()) return;
+    setLoadingAI(true);
+    try {
+      const res = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      setAiReply(res.choices[0].message?.content || "لا يوجد رد");
+    } catch (err: any) {
+      setAiReply("❌ خطأ: " + (err.message || err));
+    }
+    setLoadingAI(false);
+  };
+
+  // ✅ إضافة مهمة
   const handleTaskAdd = (newTask: Omit<Task, 'id'>) => {
     const task: Task = { ...newTask, id: Date.now().toString() };
     setTasks(prev => [...prev, task]);
@@ -78,19 +109,46 @@ function App() {
     setGoals(prev => prev.map(goal => (goal.id === updatedGoal.id ? updatedGoal : goal)));
   };
 
-  // ✅ التبويب النشط
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
           <>
             <Dashboard tasks={tasks} goals={goals} />
+
+            {/* 🔹 تحليلات المهام بالذكاء الاصطناعي */}
             {aiInsights && (
               <div className="m-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow">
                 <h2 className="text-lg font-bold mb-2">🤖 تحليلات الذكاء الاصطناعي</h2>
                 <p className="text-gray-700">{aiInsights}</p>
               </div>
             )}
+
+            {/* 🔹 صندوق سؤال مباشر للـ AI */}
+            <div className="m-4 p-4 bg-green-50 border border-green-200 rounded-lg shadow">
+              <h2 className="text-lg font-bold mb-2">💬 اسأل الذكاء الاصطناعي</h2>
+              <div className="flex flex-col gap-2">
+                <textarea
+                  className="border p-2 rounded"
+                  rows={3}
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="اكتب سؤالك هنا..."
+                />
+                <button
+                  onClick={handleAskAI}
+                  disabled={loadingAI}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  {loadingAI ? "جاري التفكير..." : "أرسل"}
+                </button>
+                {aiReply && (
+                  <div className="mt-2 text-gray-800 whitespace-pre-wrap">
+                    {aiReply}
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         );
       case 'tasks':
@@ -121,10 +179,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* الهيدر */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* المحتوى */}
       <main className="pb-8">{renderActiveTab()}</main>
     </div>
   );
