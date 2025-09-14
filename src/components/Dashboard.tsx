@@ -27,26 +27,41 @@ interface DashboardProps {
   goals: Goal[];
 }
 
-// 🔹 Hook للذكاء الاصطناعي: AI Insights
+// 🔹 Hook للذكاء الاصطناعي (محدثة)
 const useAIInsights = (tasks: Task[]) => {
   const [insights, setInsights] = useState<string[]>([]);
 
   useEffect(() => {
-    const suggestions: string[] = [];
+    const fetchInsights = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/ai-insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tasks }),
+        });
+        const data = await res.json();
+        setInsights(data.insights);
+      } catch (err) {
+        console.warn("⚠️ لم أستطع الاتصال بالسيرفر، هيتم استخدام اقتراحات محلية.");
+        // fallback محلي
+        const suggestions: string[] = [];
+        const overdue = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < new Date());
+        if (overdue.length > 0)
+          suggestions.push(`⚠️ لديك ${overdue.length} مهمة متأخرة! حاول إنجازها أولًا.`);
 
-    const overdue = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < new Date());
-    if (overdue.length > 0)
-      suggestions.push(`⚠️ لديك ${overdue.length} مهمة متأخرة! حاول إنجازها أولًا.`);
+        const upcoming = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= new Date());
+        if (upcoming.length > 0)
+          suggestions.push(`⏰ استعد لمهامك القادمة: ${upcoming[0].title}`);
 
-    const upcoming = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= new Date());
-    if (upcoming.length > 0)
-      suggestions.push(`⏰ استعد لمهامك القادمة: ${upcoming[0].title}`);
+        const done = tasks.filter(t => t.status === 'done');
+        if (done.length > 0)
+          suggestions.push(`✅ لقد أنجزت ${done.length} مهمة! أحسنت 👍`);
 
-    const done = tasks.filter(t => t.status === 'done');
-    if (done.length > 0)
-      suggestions.push(`✅ لقد أنجزت ${done.length} مهمة! أحسنت 👍`);
+        setInsights(suggestions);
+      }
+    };
 
-    setInsights(suggestions);
+    if (tasks.length > 0) fetchInsights();
   }, [tasks]);
 
   return insights;
@@ -75,7 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
   ];
 
   // 🔹 إنتاجية الأسبوع BarChart
-  const weekDays = ['أحد', 'إثن', 'ثل', 'أرب', 'خمس', 'جمع', 'سبت'];
+  const weekDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   const weeklyData = weekDays.map((day, i) => {
     const dayTasks = tasks.filter(
       (t) => t.dueDate && t.dueDate.getDay() === i && t.status === 'done'
@@ -139,9 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
 
       overdueTasks.forEach((task) => {
         new Notification('⚠️ مهمة متأخرة', {
-          body: `${task.title} كان موعدها ${task.dueDate!.toLocaleDateString(
-            'ar-EG'
-          )}`,
+          body: `${task.title} كان موعدها ${task.dueDate!.toLocaleDateString('ar-EG')}`,
           icon: '/icons/icon-192.png',
         });
       });
