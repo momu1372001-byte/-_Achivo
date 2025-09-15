@@ -12,6 +12,9 @@ import {
   initialGoals,
 } from "./data/initialData";
 
+// 👇 استيراد أيقونات للتنقل السفلي
+import { Home, ListTodo, Calendar as CalendarIcon, Target } from "lucide-react";
+
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -101,7 +104,9 @@ function App() {
             <Dashboard tasks={tasks} goals={goals} />
             {aiInsights && (
               <div className="m-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow">
-                <h2 className="text-lg font-bold mb-2">🤖 تحليلات الذكاء الاصطناعي</h2>
+                <h2 className="text-lg font-bold mb-2">
+                  🤖 تحليلات الذكاء الاصطناعي
+                </h2>
                 <p className="text-gray-700">{aiInsights}</p>
               </div>
             )}
@@ -138,12 +143,63 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900" dir="rtl">
       {/* الهيدر */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* المحتوى */}
-      <main className="pb-8">{renderActiveTab()}</main>
+      <main className="pb-20">{renderActiveTab()}</main>
+
+      {/* ✅ التنقل السفلي */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg flex justify-around py-2">
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`flex flex-col items-center text-sm ${
+            activeTab === "dashboard"
+              ? "text-blue-500"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <Home size={22} />
+          <span>الرئيسية</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("tasks")}
+          className={`flex flex-col items-center text-sm ${
+            activeTab === "tasks"
+              ? "text-blue-500"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <ListTodo size={22} />
+          <span>المهام</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("calendar")}
+          className={`flex flex-col items-center text-sm ${
+            activeTab === "calendar"
+              ? "text-blue-500"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <CalendarIcon size={22} />
+          <span>التقويم</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("goals")}
+          className={`flex flex-col items-center text-sm ${
+            activeTab === "goals"
+              ? "text-blue-500"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <Target size={22} />
+          <span>الأهداف</span>
+        </button>
+      </nav>
     </div>
   );
 }
