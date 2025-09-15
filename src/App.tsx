@@ -18,7 +18,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
 
-  // ✅ إعدادات التطبيق (محفوظة في localStorage)
+  // ✅ إعدادات التطبيق
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
   const [themeColor, setThemeColor] = useLocalStorage<string>("settings-themeColor", "blue");
   const [fontSize, setFontSize] = useLocalStorage<string>("settings-fontSize", "normal");
@@ -26,12 +26,13 @@ function App() {
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminderTone", "default");
   const [minimalView, setMinimalView] = useLocalStorage<boolean>("settings-minimalView", false);
 
-  // ✅ قفل التطبيق (بكلمة مرور)
+  // ✅ إعدادات القفل
   const [appLocked, setAppLocked] = useLocalStorage<boolean>("settings-appLocked", false);
   const [password, setPassword] = useLocalStorage<string>("settings-password", "1234");
   const [enteredPassword, setEnteredPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // ✅ تطبيق Dark Mode
+  // ✅ تفعيل الوضع الليلي
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -40,17 +41,17 @@ function App() {
     }
   }, [darkMode]);
 
-  // ✅ تطبيق لون الواجهة (themeColor) باستخدام CSS Variable
+  // ✅ تطبيق اللون الأساسي
   useEffect(() => {
     document.documentElement.style.setProperty("--theme-color", themeColor);
   }, [themeColor]);
 
-  // ✅ البيانات (Tasks / Categories / Goals)
+  // ✅ البيانات
   const [tasks, setTasks] = useLocalStorage<Task[]>("productivity-tasks", initialTasks);
   const [categories, setCategories] = useLocalStorage<Category[]>("productivity-categories", initialCategories);
   const [goals, setGoals] = useLocalStorage<Goal[]>("productivity-goals", initialGoals);
 
-  // ✅ تحليلات AI
+  // ✅ الذكاء الاصطناعي
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   useEffect(() => {
     const fetchInsights = async () => {
@@ -126,7 +127,7 @@ function App() {
     }
   };
 
-  // ✅ شاشة القفل (لو التطبيق مقفول)
+  // ✅ شاشة القفل
   if (appLocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -136,16 +137,30 @@ function App() {
             type="password"
             placeholder="أدخل كلمة المرور"
             value={enteredPassword}
-            onChange={(e) => setEnteredPassword(e.target.value)}
-            className="w-full p-2 border rounded mb-4"
+            onChange={(e) => {
+              setEnteredPassword(e.target.value);
+              setErrorMessage("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (enteredPassword === password) {
+                  setAppLocked(false);
+                  setEnteredPassword("");
+                } else {
+                  setErrorMessage("❌ كلمة المرور غير صحيحة");
+                }
+              }
+            }}
+            className="w-full p-2 border rounded mb-2"
           />
+          {errorMessage && <p className="text-red-500 text-sm mb-2">{errorMessage}</p>}
           <button
             onClick={() => {
               if (enteredPassword === password) {
                 setAppLocked(false);
                 setEnteredPassword("");
               } else {
-                alert("❌ كلمة المرور غير صحيحة");
+                setErrorMessage("❌ كلمة المرور غير صحيحة");
               }
             }}
             className="w-full bg-blue-500 text-white py-2 rounded-lg"
@@ -186,17 +201,22 @@ function App() {
             </div>
 
             {/* قفل التطبيق */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-700 dark:text-gray-200">🔒 قفل التطبيق</span>
-              <input type="checkbox" checked={appLocked} onChange={(e) => setAppLocked(e.target.checked)} />
-            </div>
             <div className="mb-4">
-              <span className="block mb-2 text-gray-700 dark:text-gray-200">كلمة المرور</span>
+              <span className="block mb-2 text-gray-700 dark:text-gray-200">🔒 قفل التطبيق</span>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={appLocked}
+                  onChange={(e) => setAppLocked(e.target.checked)}
+                />
+                <span>تفعيل القفل</span>
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded"
+                placeholder="حدد كلمة مرور"
+                className="w-full p-2 border rounded mt-2"
               />
             </div>
 
@@ -251,6 +271,17 @@ function App() {
                 <option value="beep">📢 Beep</option>
               </select>
             </div>
+
+            {/* تسجيل خروج (قفل التطبيق يدويًا) */}
+            <button
+              onClick={() => {
+                setAppLocked(true);
+                setIsSettingsOpen(false);
+              }}
+              className="w-full bg-red-500 text-white py-2 rounded-lg mt-4"
+            >
+              تسجيل خروج 🔒
+            </button>
 
             <button onClick={() => setIsSettingsOpen(false)} className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg">
               إغلاق
