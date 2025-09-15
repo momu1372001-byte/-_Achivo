@@ -1,9 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: "class", // ✅ أضفنا الوضع الليلي
+  darkMode: "class", // ✅ تفعيل الوضع الليلي
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        theme: "var(--theme-color)", // 🎨 متغير اللون الرئيسي
+      },
+    },
   },
   plugins: [],
 };
