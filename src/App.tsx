@@ -17,8 +17,9 @@ function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [isSecurityOpen, setIsSecurityOpen] = useState(false); // صفحة "تأمين التطبيق"
 
-  // ✅ إعدادات التطبيق
+  // ✅ إعدادات عامة
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
   const [themeColor, setThemeColor] = useLocalStorage<string>("settings-themeColor", "blue");
   const [fontSize, setFontSize] = useLocalStorage<string>("settings-fontSize", "normal");
@@ -26,9 +27,9 @@ function App() {
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminderTone", "default");
   const [minimalView, setMinimalView] = useLocalStorage<boolean>("settings-minimalView", false);
 
-  // ✅ إعدادات القفل
-  const [appLocked, setAppLocked] = useLocalStorage<boolean>("settings-appLocked", false);
-  const [password, setPassword] = useLocalStorage<string>("settings-password", "1234");
+  // ✅ تأمين التطبيق
+  const [appSecured, setAppSecured] = useLocalStorage<boolean>("settings-appSecured", false);
+  const [appPassword, setAppPassword] = useLocalStorage<string | null>("settings-appPassword", null);
   const [enteredPassword, setEnteredPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -127,15 +128,15 @@ function App() {
     }
   };
 
-  // ✅ شاشة القفل
-  if (appLocked) {
+  // ✅ شاشة القفل (لو التطبيق مؤمَّن)
+  if (appSecured && appPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-80">
-          <h2 className="text-xl font-bold mb-4 text-center">🔒 التطبيق مقفول</h2>
+          <h2 className="text-xl font-bold mb-4 text-center">🔒 أدخل كلمة المرور</h2>
           <input
             type="password"
-            placeholder="أدخل كلمة المرور"
+            placeholder="كلمة المرور"
             value={enteredPassword}
             onChange={(e) => {
               setEnteredPassword(e.target.value);
@@ -143,9 +144,10 @@ function App() {
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (enteredPassword === password) {
-                  setAppLocked(false);
+                if (enteredPassword === appPassword) {
                   setEnteredPassword("");
+                  setErrorMessage("");
+                  setAppSecured(false); // يفتح الجلسة الحالية
                 } else {
                   setErrorMessage("❌ كلمة المرور غير صحيحة");
                 }
@@ -156,16 +158,17 @@ function App() {
           {errorMessage && <p className="text-red-500 text-sm mb-2">{errorMessage}</p>}
           <button
             onClick={() => {
-              if (enteredPassword === password) {
-                setAppLocked(false);
+              if (enteredPassword === appPassword) {
                 setEnteredPassword("");
+                setErrorMessage("");
+                setAppSecured(false);
               } else {
                 setErrorMessage("❌ كلمة المرور غير صحيحة");
               }
             }}
             className="w-full bg-blue-500 text-white py-2 rounded-lg"
           >
-            فتح التطبيق
+            دخول
           </button>
         </div>
       </div>
@@ -200,43 +203,6 @@ function App() {
               <input type="checkbox" checked={darkMode} onChange={(e) => setDarkMode(e.target.checked)} />
             </div>
 
-            {/* قفل التطبيق */}
-            <div className="mb-4">
-              <span className="block mb-2 text-gray-700 dark:text-gray-200">🔒 قفل التطبيق</span>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={appLocked}
-                  onChange={(e) => setAppLocked(e.target.checked)}
-                />
-                <span>تفعيل القفل</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="حدد كلمة مرور"
-                className="w-full p-2 border rounded mt-2"
-              />
-            </div>
-
-            {/* لون الواجهة */}
-            <div className="mb-4">
-              <span className="block mb-2 text-gray-700 dark:text-gray-200">لون الواجهة</span>
-              <div className="flex gap-2">
-                {["blue", "green", "purple", "red"].map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setThemeColor(color)}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      themeColor === color ? "border-black dark:border-white" : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-
             {/* حجم الخط */}
             <div className="mb-4">
               <span className="block mb-2 text-gray-700 dark:text-gray-200">حجم الخط</span>
@@ -264,26 +230,72 @@ function App() {
 
             {/* نغمة التذكيرات */}
             <div className="mb-4">
-              <span className="block mb-2 text-gray-700 dark:text-gray-200">نغمة التذكيرات</span>
+              <span className="block mb-2 text-gray-700 dark:text-gray-200">🔔 نغمة التذكيرات</span>
               <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)} className="w-full p-2 border rounded">
                 <option value="default">افتراضية</option>
-                <option value="chime">🔔 Chime</option>
-                <option value="beep">📢 Beep</option>
+                <option value="chime">Chime</option>
+                <option value="beep">Beep</option>
               </select>
             </div>
 
-            {/* تسجيل خروج (قفل التطبيق يدويًا) */}
+            {/* رابط لتأمين التطبيق */}
             <button
               onClick={() => {
-                setAppLocked(true);
                 setIsSettingsOpen(false);
+                setIsSecurityOpen(true);
               }}
-              className="w-full bg-red-500 text-white py-2 rounded-lg mt-4"
+              className="w-full bg-purple-600 text-white py-2 rounded-lg mt-4"
             >
-              تسجيل خروج 🔒
+              🔒 تأمين التطبيق
             </button>
 
             <button onClick={() => setIsSettingsOpen(false)} className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg">
+              إغلاق
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ نافذة تأمين التطبيق */}
+      {isSecurityOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-end z-50">
+          <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg">
+            <h2 className="text-lg font-bold mb-4">🔒 إدارة تأمين التطبيق</h2>
+
+            {!appPassword && (
+              <>
+                <p className="mb-2">إنشاء كلمة مرور جديدة:</p>
+                <PasswordSetup
+                  onComplete={(pwd) => {
+                    setAppPassword(pwd);
+                    setAppSecured(true);
+                    alert("✅ تم تعيين كلمة المرور بنجاح!");
+                    setIsSecurityOpen(false);
+                  }}
+                />
+              </>
+            )}
+
+            {appPassword && (
+              <>
+                <PasswordManager
+                  currentPassword={appPassword}
+                  onDisable={() => {
+                    setAppPassword(null);
+                    setAppSecured(false);
+                    alert("✅ تم إلغاء تأمين التطبيق.");
+                    setIsSecurityOpen(false);
+                  }}
+                  onChangePassword={(newPwd) => {
+                    setAppPassword(newPwd);
+                    alert("✅ تم تغيير كلمة المرور.");
+                    setIsSecurityOpen(false);
+                  }}
+                />
+              </>
+            )}
+
+            <button onClick={() => setIsSecurityOpen(false)} className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg">
               إغلاق
             </button>
           </div>
@@ -305,5 +317,113 @@ function App() {
     </div>
   );
 }
+
+// ✅ كومبوننت لإنشاء كلمة مرور جديدة
+const PasswordSetup: React.FC<{ onComplete: (pwd: string) => void }> = ({ onComplete }) => {
+  const [pwd, setPwd] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+
+  return (
+    <div>
+      <input
+        type="password"
+        placeholder="كلمة المرور"
+        value={pwd}
+        onChange={(e) => setPwd(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      <input
+        type="password"
+        placeholder="تأكيد كلمة المرور"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+      <button
+        onClick={() => {
+          if (!pwd || pwd.length < 4) return setError("❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل");
+          if (pwd !== confirm) return setError("❌ كلمتا المرور غير متطابقتين");
+          onComplete(pwd);
+        }}
+        className="w-full bg-green-600 text-white py-2 rounded-lg"
+      >
+        إنشاء كلمة المرور
+      </button>
+    </div>
+  );
+};
+
+// ✅ كومبوننت لإدارة كلمة المرور
+const PasswordManager: React.FC<{
+  currentPassword: string;
+  onDisable: () => void;
+  onChangePassword: (newPwd: string) => void;
+}> = ({ currentPassword, onDisable, onChangePassword }) => {
+  const [oldPwd, setOldPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+
+  return (
+    <div>
+      {/* تغيير كلمة المرور */}
+      <h3 className="font-semibold mb-2">تغيير كلمة المرور:</h3>
+      <input
+        type="password"
+        placeholder="كلمة المرور الحالية"
+        value={oldPwd}
+        onChange={(e) => setOldPwd(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      <input
+        type="password"
+        placeholder="كلمة المرور الجديدة"
+        value={newPwd}
+        onChange={(e) => setNewPwd(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      <input
+        type="password"
+        placeholder="تأكيد كلمة المرور الجديدة"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+      <button
+        onClick={() => {
+          if (oldPwd !== currentPassword) return setError("❌ كلمة المرور الحالية غير صحيحة");
+          if (newPwd.length < 4) return setError("❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل");
+          if (newPwd !== confirm) return setError("❌ كلمتا المرور غير متطابقتين");
+          onChangePassword(newPwd);
+        }}
+        className="w-full bg-yellow-500 text-white py-2 rounded-lg mb-4"
+      >
+        تغيير كلمة المرور
+      </button>
+
+      {/* إلغاء القفل */}
+      <h3 className="font-semibold mb-2">إلغاء تأمين التطبيق:</h3>
+      <input
+        type="password"
+        placeholder="أدخل كلمة المرور الحالية"
+        value={oldPwd}
+        onChange={(e) => setOldPwd(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+      <button
+        onClick={() => {
+          if (oldPwd !== currentPassword) return setError("❌ كلمة المرور غير صحيحة");
+          onDisable();
+        }}
+        className="w-full bg-red-600 text-white py-2 rounded-lg"
+      >
+        إلغاء التأمين
+      </button>
+    </div>
+  );
+};
 
 export default App;
