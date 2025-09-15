@@ -174,8 +174,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Bell className="w-7 h-7 text-blue-600" /> لوحة التحكم
+      <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
+        <Bell className="w-7 h-7 text-theme" /> لوحة التحكم
       </h2>
 
       {/* 🔹 Cards Stats */}
@@ -187,42 +187,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
             total: tasks.length,
             icon: CheckCircle,
             color: 'text-green-600',
-            bg: 'bg-green-50',
+            bg: 'bg-green-50 dark:bg-green-900/30',
           },
           {
             title: 'قيد التنفيذ',
             value: inProgressTasks.length,
             icon: Clock,
             color: 'text-blue-600',
-            bg: 'bg-blue-50',
+            bg: 'bg-blue-50 dark:bg-blue-900/30',
           },
           {
             title: 'متبقية',
             value: todoTasks.length,
             icon: Calendar,
             color: 'text-purple-600',
-            bg: 'bg-purple-50',
+            bg: 'bg-purple-50 dark:bg-purple-900/30',
           },
           {
             title: 'متأخرة',
             value: overdueTasks.length,
             icon: AlertTriangle,
             color: 'text-red-600',
-            bg: 'bg-red-50',
+            bg: 'bg-red-50 dark:bg-red-900/30',
           },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
             <div
               key={i}
-              className={`${stat.bg} border rounded-xl p-6 flex justify-between items-center shadow-sm`}
+              className={`${stat.bg} border border-gray-200 dark:border-gray-700 rounded-xl p-6 flex justify-between items-center shadow-sm`}
             >
               <div>
-                <p className="text-sm text-gray-500">{stat.title}</p>
-                <p className="text-2xl font-bold">
+                <p className="text-gray-500 dark:text-gray-400">{stat.title}</p>
+                <p className="font-bold">
                   {stat.value}
                   {stat.total && stat.title === 'منجزة' && (
-                    <span className="text-sm text-gray-400">/{stat.total}</span>
+                    <span className="text-gray-400 dark:text-gray-500">/{stat.total}</span>
                   )}
                 </p>
               </div>
@@ -235,22 +235,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
       {/* 🔹 Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* معدل الإنجاز */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex justify-between items-center mb-3">
             <h3 className="font-semibold">معدل الإنجاز</h3>
             <Award className="text-yellow-500" />
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
             <div
-              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full"
+              className="bg-theme h-3 rounded-full"
               style={{ width: `${completionRate}%` }}
             ></div>
           </div>
-          <p className="text-sm text-gray-600 mt-2">{completionRate}% مكتملة</p>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">{completionRate}% مكتملة</p>
         </div>
 
         {/* PieChart */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-4">توزيع المهام</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
@@ -268,32 +268,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
       {/* 🔹 Weekly Productivity + Upcoming Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* BarChart */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-4">إنتاجية الأسبوع</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={weeklyData}>
-              <XAxis dataKey="day" />
+              <XAxis dataKey="day" stroke="#888" />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="value" fill="var(--theme-color)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Upcoming Tasks */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-4">المهام القادمة</h3>
           {upcomingTasks.length > 0 ? (
             <ul className="space-y-2">
               {upcomingTasks.map((t) => (
-                <li key={t.id} className="flex justify-between text-sm border-b pb-2">
+                <li key={t.id} className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
                   <span>{t.title}</span>
-                  <span className="text-gray-500">{t.dueDate!.toLocaleDateString('ar-EG')}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t.dueDate!.toLocaleDateString('ar-EG')}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 text-sm">لا توجد مهام قادمة 🎉</p>
+            <p className="text-gray-500 dark:text-gray-400">لا توجد مهام قادمة 🎉</p>
           )}
         </div>
       </div>
@@ -301,20 +301,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
       {/* 🔹 Streaks + Achievements + AI Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Streak */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-2">سلسلة الإنجاز</h3>
-          <p className="text-2xl font-bold text-red-600">{streak} يوم متتالي</p>
+          <p className="font-bold text-red-600">{streak} يوم متتالي</p>
         </div>
 
         {/* Achievements */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-2">إنجازاتك</h3>
           {achievements.length > 0 ? (
             <ul className="space-y-2">
               {achievements.map((a, i) => {
                 const Icon = a.icon;
                 return (
-                  <li key={i} className="flex items-center space-x-2">
+                  <li key={i} className="flex items-center gap-2">
                     <Icon className={`w-5 h-5 ${a.color}`} />
                     <span>{a.title}</span>
                   </li>
@@ -322,21 +322,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals }) => {
               })}
             </ul>
           ) : (
-            <p className="text-gray-500 text-sm">ابدأ بإنجاز مهامك لتحقق إنجازات 🏆</p>
+            <p className="text-gray-500 dark:text-gray-400">ابدأ بإنجاز مهامك لتحقق إنجازات 🏆</p>
           )}
         </div>
 
         {/* AI Insights */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-2">اقتراحات ذكية 🤖</h3>
           {aiInsights.length > 0 ? (
-            <ul className="space-y-1 text-sm text-gray-700">
+            <ul className="space-y-1 text-gray-700 dark:text-gray-300">
               {aiInsights.map((insight, i) => (
                 <li key={i}>• {insight}</li>
               ))}
             </ul>
           ) : (
-            <p className="text-gray-400 text-sm">جاري تحليل مهامك...</p>
+            <p className="text-gray-400">جاري تحليل مهامك...</p>
           )}
         </div>
       </div>

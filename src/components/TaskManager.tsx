@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Clock, Calendar, Flag, CheckCircle, Trash2, Play, Pause } from 'lucide-react';
-import { Task, Category } from '../types';
+// src/components/TaskManager.tsx
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Plus,
+  Search,
+  Clock,
+  Calendar,
+  Flag,
+  CheckCircle,
+  Trash2,
+  Play,
+  Pause,
+} from "lucide-react";
+import { Task, Category } from "../types";
 
 interface TaskManagerProps {
   tasks: Task[];
   categories: Category[];
   onTaskUpdate: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
-  onTaskAdd: (task: Omit<Task, 'id'>) => void;
+  onTaskAdd: (task: Omit<Task, "id">) => void;
+  taskView?: "list" | "grid"; // افتراضي list
+  minimalView?: boolean; // افتراضي false
 }
 
 export const TaskManager: React.FC<TaskManagerProps> = ({
@@ -16,127 +29,145 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   onTaskUpdate,
   onTaskDelete,
   onTaskAdd,
+  taskView = "list",
+  minimalView = false,
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterPriority, setFilterPriority] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
   const [timerSeconds, setTimerSeconds] = useState(0);
 
+  const defaultCategory = categories.length > 0 ? categories[0].name : "عام";
+
   const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 'medium' as const,
-    category: 'عام',
-    dueDate: '',
+    title: "",
+    description: "",
+    priority: "medium" as const,
+    category: defaultCategory,
+    dueDate: "",
   });
 
-  // ✅ فلترة المهام
-  const filteredTasks = tasks.filter(task => {
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!categories.find((c) => c.name === newTask.category) && categories.length > 0) {
+      setNewTask((prev) => ({ ...prev, category: categories[0].name }));
+    }
+    if (!showAddForm && categories.length > 0 && newTask.category !== categories[0].name) {
+      setNewTask((prev) => ({ ...prev, category: categories[0].name }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
+
+  const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
-    const matchesCategory = filterCategory === 'all' || task.category === filterCategory;
+      (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesPriority = filterPriority === "all" || task.priority === filterPriority;
+    const matchesCategory = filterCategory === "all" || task.category === filterCategory;
 
     return matchesSearch && matchesPriority && matchesCategory;
   });
 
-  // ✅ إضافة مهمة جديدة
   const handleAddTask = () => {
-    if (!newTask.title.trim()) return;
+    const title = newTask.title.trim();
+    if (!title) {
+      alert("الرجاء إدخال عنوان المهمة.");
+      titleInputRef.current?.focus();
+      return;
+    }
 
-    onTaskAdd({
-      title: newTask.title,
-      description: newTask.description,
-      status: 'todo',
+    const payload: Omit<Task, "id"> = {
+      title,
+      description: newTask.description?.trim() || "",
+      status: "todo",
       priority: newTask.priority,
-      category: newTask.category,
+      category: newTask.category || defaultCategory,
       dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
       createdAt: new Date(),
       timeSpent: 0,
-    });
+    };
+
+    onTaskAdd(payload);
 
     setNewTask({
-      title: '',
-      description: '',
-      priority: 'medium',
-      category: 'عام',
-      dueDate: '',
+      title: "",
+      description: "",
+      priority: "medium",
+      category: defaultCategory,
+      dueDate: "",
     });
     setShowAddForm(false);
+
+    setTimeout(() => titleInputRef.current?.focus(), 200);
   };
 
-  // ✅ تغيير حالة المهمة
   const toggleTaskStatus = (task: Task) => {
     const newStatus =
-      task.status === 'todo'
-        ? 'in-progress'
-        : task.status === 'in-progress'
-        ? 'done'
-        : 'todo';
-
-    onTaskUpdate({
-      ...task,
-      status: newStatus,
-    });
+      task.status === "todo" ? "in-progress" : task.status === "in-progress" ? "done" : "todo";
+    onTaskUpdate({ ...task, status: newStatus });
   };
 
-  // ✅ إدارة المؤقت
   const toggleTimer = (taskId: string) => {
     if (activeTimer === taskId) {
-      // إيقاف المؤقت
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       if (task) {
-        onTaskUpdate({
-          ...task,
-          timeSpent: task.timeSpent + Math.floor(timerSeconds / 60),
-        });
+        const minutesToAdd = Math.floor(timerSeconds / 60);
+        onTaskUpdate({ ...task, timeSpent: (task.timeSpent || 0) + minutesToAdd });
       }
       setActiveTimer(null);
       setTimerSeconds(0);
     } else {
-      // تشغيل المؤقت
       setActiveTimer(taskId);
       setTimerSeconds(0);
     }
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let intervalId: number | undefined;
     if (activeTimer) {
-      interval = setInterval(() => {
-        setTimerSeconds(prev => prev + 1);
+      intervalId = window.setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+    };
   }, [activeTimer]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* رأس الصفحة */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">إدارة المهام</h2>
-          <p className="text-gray-600">نظم مهامك وتابع تقدمك</p>
+          <h2 className="font-bold text-gray-900 dark:text-gray-100">إدارة المهام</h2>
+          <p className="text-gray-600 dark:text-gray-300">نظم مهامك وتابع تقدمك</p>
         </div>
+
+        {/* زر إضافة المهمة */}
         <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+          type="button"
+          onClick={() => {
+            setShowAddForm(true);
+            setTimeout(() => titleInputRef.current?.focus(), 100);
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 shadow-lg transition duration-200 rtl:space-x-reverse"
         >
           <Plus className="w-5 h-5" />
           <span>إضافة مهمة جديدة</span>
         </button>
       </div>
 
-      {/* 🔍 الفلاتر */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      {/* الفلاتر */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -145,14 +176,14 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
               placeholder="البحث في المهام..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
             />
           </div>
 
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
           >
             <option value="all">جميع الأولويات</option>
             <option value="high">أولوية عالية</option>
@@ -163,36 +194,46 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
           >
             <option value="all">جميع الفئات</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.name}>{category.name}</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.name}>
+                {category.name}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* 📝 نموذج إضافة مهمة */}
+      {/* نموذج إضافة المهمة (Modal) */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">إضافة مهمة جديدة</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">إضافة مهمة جديدة</h3>
 
-            <div className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddTask();
+              }}
+              className="space-y-4"
+            >
               <input
+                ref={titleInputRef}
                 type="text"
                 placeholder="عنوان المهمة"
                 value={newTask.title}
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-100"
+                required
               />
 
               <textarea
                 placeholder="وصف المهمة (اختياري)"
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
                 rows={3}
               />
 
@@ -200,7 +241,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 <select
                   value={newTask.priority}
                   onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
                 >
                   <option value="low">أولوية منخفضة</option>
                   <option value="medium">أولوية متوسطة</option>
@@ -210,10 +251,13 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 <select
                   value={newTask.category}
                   onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
                 >
-                  {categories.map(category => (
-                    <option key={category.id} value={category.name}>{category.name}</option>
+                  {categories.length === 0 && <option value="عام">عام</option>}
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -222,126 +266,123 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 type="date"
                 value={newTask.dueDate}
                 onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
               />
-            </div>
 
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={handleAddTask}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
-              >
-                إضافة المهمة
-              </button>
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors duration-200"
-              >
-                إلغاء
-              </button>
-            </div>
+              <div className="flex gap-3 mt-4">
+                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium">
+                  إضافة المهمة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewTask({
+                      title: "",
+                      description: "",
+                      priority: "medium",
+                      category: defaultCategory,
+                      dueDate: "",
+                    });
+                  }}
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 py-2 rounded-lg"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* 📋 قائمة المهام */}
-      <div className="space-y-4">
+      {/* عرض المهام */}
+      <div className={`grid gap-4 ${taskView === "grid" ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
         {filteredTasks.map((task) => (
           <div
             key={task.id}
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md ${
-              task.status === 'done' ? 'opacity-75' : ''
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md ${
+              task.status === "done" ? "opacity-75" : ""
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4 flex-1">
+              <div className="flex items-center gap-4 flex-1">
                 <button
                   onClick={() => toggleTaskStatus(task)}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-                    task.status === 'done'
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : task.status === 'in-progress'
-                      ? 'bg-yellow-500 border-yellow-500 text-white'
-                      : 'border-gray-300 hover:border-green-400'
+                    task.status === "done"
+                      ? "bg-green-500 border-green-500 text-white"
+                      : task.status === "in-progress"
+                      ? "bg-yellow-500 border-yellow-500 text-white"
+                      : "border-gray-300 hover:border-green-400"
                   }`}
                 >
-                  {task.status === 'done' && <CheckCircle className="w-4 h-4" />}
+                  {task.status === "done" && <CheckCircle className="w-4 h-4" />}
                 </button>
 
                 <div className="flex-1">
                   <h3
-                    className={`text-lg font-semibold ${
-                      task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'
+                    className={`font-semibold ${
+                      task.status === "done" ? "line-through text-gray-500" : "text-gray-900 dark:text-gray-100"
                     }`}
                   >
                     {task.title}
                   </h3>
-                  {task.description && (
-                    <p className="text-gray-600 mt-1">{task.description}</p>
+
+                  {!minimalView && (
+                    <>
+                      {task.description && <p className="text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>}
+
+                      <div className="flex items-center gap-4 mt-2">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full font-medium ${
+                            task.priority === "high"
+                              ? "bg-red-100 text-red-700"
+                              : task.priority === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          <Flag className="w-3 h-3 inline mr-1" />
+                          {task.priority === "high" ? "عالية" : task.priority === "medium" ? "متوسطة" : "منخفضة"}
+                        </span>
+
+                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                          {task.category}
+                        </span>
+
+                        {task.dueDate && (
+                          <span className="text-xs text-gray-500 flex items-center">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            {new Date(task.dueDate).toLocaleDateString("ar-SA")}
+                          </span>
+                        )}
+
+                        {task.timeSpent > 0 && (
+                          <span className="text-xs text-gray-500 flex items-center">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {Math.floor(task.timeSpent / 60)}س {task.timeSpent % 60}د
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
-
-                  <div className="flex items-center space-x-4 mt-2">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full font-medium ${
-                        task.priority === 'high'
-                          ? 'bg-red-100 text-red-700'
-                          : task.priority === 'medium'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      <Flag className="w-3 h-3 inline mr-1" />
-                      {task.priority === 'high'
-                        ? 'عالية'
-                        : task.priority === 'medium'
-                        ? 'متوسطة'
-                        : 'منخفضة'}
-                    </span>
-
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {task.category}
-                    </span>
-
-                    {task.dueDate && (
-                      <span className="text-xs text-gray-500 flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {new Date(task.dueDate).toLocaleDateString('ar-SA')}
-                      </span>
-                    )}
-
-                    {task.timeSpent > 0 && (
-                      <span className="text-xs text-gray-500 flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {Math.floor(task.timeSpent / 60)}س {task.timeSpent % 60}د
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                {/* ⏱️ المؤقت */}
-                <div className="flex items-center space-x-2">
-                  {activeTimer === task.id && (
-                    <span className="text-sm font-mono text-blue-600">
-                      {formatTime(timerSeconds)}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => toggleTimer(task.id)}
-                    className={`p-2 rounded-lg transition-colors duration-200 ${
-                      activeTimer === task.id
-                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                        : 'bg-green-100 text-green-600 hover:bg-green-200'
-                    }`}
-                  >
-                    {activeTimer === task.id ? (
-                      <Pause className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                {!minimalView && (
+                  <div className="flex items-center gap-2">
+                    {activeTimer === task.id && <span className="text-sm font-mono text-blue-600">{formatTime(timerSeconds)}</span>}
+                    <button
+                      onClick={() => toggleTimer(task.id)}
+                      className={`p-2 rounded-lg transition-colors duration-200 ${
+                        activeTimer === task.id ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-green-100 text-green-600 hover:bg-green-200"
+                      }`}
+                    >
+                      {activeTimer === task.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
 
                 <button
                   onClick={() => onTaskDelete(task.id)}
@@ -355,13 +396,13 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         ))}
 
         {filteredTasks.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-12 col-span-full">
             <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مهام</h3>
-            <p className="text-gray-600">
-              {searchTerm || filterPriority !== 'all' || filterCategory !== 'all'
-                ? 'لا توجد مهام تطابق البحث المحدد'
-                : 'ابدأ بإضافة مهامك الأولى'}
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">لا توجد مهام</h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              {searchTerm || filterPriority !== "all" || filterCategory !== "all"
+                ? "لا توجد مهام تطابق البحث المحدد"
+                : "ابدأ بإضافة مهامك الأولى"}
             </p>
           </div>
         )}
