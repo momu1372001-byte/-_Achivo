@@ -141,8 +141,8 @@ function App() {
   if (appLockedSession && appPassword) {
     return (
       <LockScreen
-        appPassword={appPassword}
-        setAppLockedSession={setAppLockedSession}
+        savedPassword={appPassword}
+        onUnlock={() => setAppLockedSession(false)}
       />
     );
   }
@@ -212,12 +212,21 @@ function App() {
     }
     if (activeModal === "security") {
       return (
-        <LockSettings
-          appPassword={appPassword}
-          setAppPassword={setAppPassword}
-          setAppLockedSession={setAppLockedSession}
-          onClose={() => setActiveModal(null)}
-        />
+        <div className="fixed inset-0 bg-black/40 flex items-end z-50">
+          <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4">🔒 تأمين التطبيق</h2>
+            <LockSettings
+              password={appPassword}
+              setPassword={setAppPassword}
+            />
+            <button
+              onClick={() => setActiveModal(null)}
+              className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
       );
     }
     if (activeModal === "ai") {
