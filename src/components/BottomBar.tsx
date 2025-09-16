@@ -1,30 +1,32 @@
+import React from "react";
 import { Settings, Bot } from "lucide-react";
 
 interface BottomBarProps {
   onOpenSettings: () => void;
   onOpenAI: () => void;
+  language: "ar" | "en";
 }
 
-export default function BottomBar({ onOpenSettings, onOpenAI }: BottomBarProps) {
+const BottomBar: React.FC<BottomBarProps> = ({ onOpenSettings, onOpenAI, language }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg flex justify-around py-3 z-40">
-      {/* أيقونة الإعدادات */}
+    <div className="fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center py-2 shadow-lg">
       <button
         onClick={onOpenSettings}
-        className="flex flex-col items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-500"
+        className="flex flex-col items-center text-gray-600 dark:text-gray-300"
       >
-        <Settings size={22} />
-        <span>الإعدادات</span>
+        <Settings className="w-6 h-6 mb-1" />
+        <span className="text-xs">{language === "ar" ? "الإعدادات" : "Settings"}</span>
       </button>
 
-      {/* أيقونة الذكاء الاصطناعي */}
       <button
         onClick={onOpenAI}
-        className="flex flex-col items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-500"
+        className="flex flex-col items-center text-gray-600 dark:text-gray-300"
       >
-        <Bot size={22} />
-        <span>الذكاء الاصطناعي</span>
+        <Bot className="w-6 h-6 mb-1" />
+        <span className="text-xs">{language === "ar" ? "المساعد" : "AI"}</span>
       </button>
-    </nav>
+    </div>
   );
-}
+};
+
+export default BottomBar;
