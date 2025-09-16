@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { TaskManager } from "./components/TaskManager";
@@ -27,6 +27,7 @@ function App() {
   const [taskView, setTaskView] = useLocalStorage<"list" | "grid">("settings-task-view", "list");
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminder-tone", "default");
   const [minimalView, setMinimalView] = useLocalStorage<boolean>("settings-minimal-view", false);
+  const [language, setLanguage] = useLocalStorage<"ar" | "en">("settings-language", "ar");
 
   // 🔒 كلمة المرور
   const [appPassword, setAppPassword] = useLocalStorage<string | null>("settings-app-password", null);
@@ -69,15 +70,71 @@ function App() {
   }, []);
 
   /* ================================
-     🔔 تشغيل نغمة التذكيرات
+     🔔 تشغيل نغمة التذكيرات (مع preload + unlock attempt)
   ================================= */
-  const playReminderTone = (tone: string) => {
-    let file = "/sounds/default.mp3";
-    if (tone === "chime") file = "/sounds/chime.mp3";
-    if (tone === "beep") file = "/sounds/beep.mp3";
+  const audioRef = useRef<Record<string, HTMLAudioElement | null>>({
+    default: null,
+    chime: null,
+    beep: null,
+  });
 
-    const audio = new Audio(file);
-    audio.play().catch(() => console.warn("⚠️ تعذّر تشغيل الصوت"));
+  // إنشاء عناصر الصوت وتحميلها
+  useEffect(() => {
+    try {
+      audioRef.current.default = new Audio("/sounds/default.mp3");
+      audioRef.current.chime = new Audio("/sounds/chime.mp3");
+      audioRef.current.beep = new Audio("/sounds/beep.mp3");
+
+      Object.values(audioRef.current).forEach((a) => {
+        if (a) {
+          a.preload = "auto";
+          // بعض المتصفحات لا تسمح بالـ autoplay، لكن محاولة التحميل مفيدة
+        }
+      });
+    } catch (e) {
+      console.warn("⚠️ لم يتم إنشاء عناصر الصوت:", e);
+    }
+  }, []);
+
+  // محاولة "فك قفل" الصوت عند أول تفاعل (click) — تجربة تشغيل ثم إيقاف
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        Object.values(audioRef.current).forEach((a) => {
+          if (a) {
+            // محاولة تشغيل مؤقتاً ثم إيقاف حتى يسمح المتصفح بالمستقبل
+            a.play()
+              .then(() => {
+                a.pause();
+                a.currentTime = 0;
+              })
+              .catch(() => {
+                // قد يفشل في بعض المتصفحات؛ هذا طبيعي
+              });
+          }
+        });
+      } catch {}
+      window.removeEventListener("click", unlock);
+    };
+    window.addEventListener("click", unlock, { once: true });
+    return () => window.removeEventListener("click", unlock);
+  }, []);
+
+  const playReminderTone = (tone: string) => {
+    try {
+      const a = audioRef.current[tone] || audioRef.current.default;
+      if (!a) {
+        console.warn("⚠️ مصدر الصوت غير موجود");
+        return;
+      }
+      a.currentTime = 0;
+      a.play().catch((err) => {
+        // ممكن المتصفح يمنع التشغيل أو يحتاج تفاعل
+        console.warn("⚠️ تعذّر تشغيل الصوت:", err);
+      });
+    } catch (e) {
+      console.warn("⚠️ خطأ عند محاولة تشغيل الصوت:", e);
+    }
   };
 
   // 📋 إدارة المهام
@@ -103,6 +160,23 @@ function App() {
     setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
   };
 
+  /* ================================
+     🏷️ إدارة التصنيفات (استغلال setCategories)
+  ================================= */
+  const addCategory = (name: string) => {
+    const newCat: Category = { ...( { id: Date.now().toString(), name } as any ) }; // cast لتوافق أي تعريف محتمل للـ Category
+    setCategories((prev) => [...prev, newCat]);
+  };
+
+  const updateCategory = (updated: Category) => {
+    setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    // ملاحظة: لم نغير المهام هنا لتجنّب أخطاء تايبينج — إذا تريد إزالة مرجع التصنيف من المهام، أخبرني لأضيف ذلك بشكل آمن.
+  };
+
   // 🔐 شاشة القفل
   if (appLockedSession && appPassword) {
     return <LockScreen savedPassword={appPassword} onUnlock={() => setAppLockedSession(false)} />;
@@ -117,7 +191,7 @@ function App() {
             <Dashboard tasks={tasks} goals={goals} />
             {aiInsights && (
               <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
-                <h2 className="font-bold mb-2 text-blue-500">🤖 تحليلات الذكاء الاصطناعي</h2>
+                <h2 className="font-bold mb-2 text-blue-500">{language === "ar" ? "🤖 تحليلات الذكاء الاصطناعي" : "🤖 AI Insights"}</h2>
                 <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
               </div>
             )}
@@ -133,6 +207,10 @@ function App() {
             onTaskDelete={handleTaskDelete}
             taskView={taskView}
             minimalView={minimalView}
+            // نمرر دوال التصنيفات كي يستفيد منها TaskManager إن أراد
+            onCategoryAdd={addCategory}
+            onCategoryUpdate={updateCategory}
+            onCategoryDelete={deleteCategory}
           />
         );
       case "calendar":
@@ -159,8 +237,16 @@ function App() {
           setMinimalView={setMinimalView}
           reminderTone={reminderTone}
           setReminderTone={setReminderTone}
+          language={language}
+          setLanguage={setLanguage}
           onOpenSecurity={() => setActiveModal("security")}
           onClose={() => setActiveModal(null)}
+          // نمرر إدارة التصنيفات للإعدادات أيضاً
+          categories={categories}
+          onCategoryAdd={addCategory}
+          onCategoryUpdate={updateCategory}
+          onCategoryDelete={deleteCategory}
+          onPlayTone={() => playReminderTone(reminderTone)}
         />
       );
     }
@@ -168,27 +254,25 @@ function App() {
       return (
         <div className="fixed inset-0 bg-black/40 flex items-end z-50">
           <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
-            <h2 className="text-lg font-bold mb-4 text-blue-500">🔒 تأمين التطبيق</h2>
+            <h2 className="text-lg font-bold mb-4 text-blue-500">🔒 {language === "ar" ? "تأمين التطبيق" : "App Security"}</h2>
             <LockSettings password={appPassword} setPassword={setAppPassword} />
             <button onClick={() => setActiveModal(null)} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">
-              إغلاق
+              {language === "ar" ? "إغلاق" : "Close"}
             </button>
           </div>
         </div>
       );
     }
     if (activeModal === "ai") {
-      return <AiModal onClose={() => setActiveModal(null)} />;
+      return <AiModal onClose={() => setActiveModal(null)} language={language} />;
     }
     return null;
   };
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 ${
-        fontSize === "small" ? "text-sm" : fontSize === "large" ? "text-lg" : "text-base"
-      }`}
-      dir="rtl"
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 ${fontSize === "small" ? "text-sm" : fontSize === "large" ? "text-lg" : "text-base"}`}
+      dir={language === "ar" ? "rtl" : "ltr"}
     >
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="pb-20">{renderActiveTab()}</main>
@@ -337,7 +421,7 @@ const LockSettings = ({ password, setPassword }: { password: string | null; setP
 };
 
 /* ================================
-   SettingsModal
+   SettingsModal (مع إدارة التصنيفات + اختبار النغمة + اللغة)
 ================================ */
 const SettingsModal = ({
   darkMode,
@@ -350,59 +434,138 @@ const SettingsModal = ({
   setMinimalView,
   reminderTone,
   setReminderTone,
+  language,
+  setLanguage,
   onOpenSecurity,
   onClose,
+  categories,
+  onCategoryAdd,
+  onCategoryUpdate,
+  onCategoryDelete,
+  onPlayTone,
 }: any) => {
+  // محليًا لإضافة / تعديل التصنيفات
+  const [newCatName, setNewCatName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const handleAdd = () => {
+    if (!newCatName.trim()) return;
+    onCategoryAdd(newCatName.trim());
+    setNewCatName("");
+  };
+
+  const startEdit = (c: Category) => {
+    setEditingId(c.id);
+    setEditingName(c.name || (c as any).title || "");
+  };
+  const saveEdit = () => {
+    if (!editingId) return;
+    onCategoryUpdate({ id: editingId, name: editingName });
+    setEditingId(null);
+    setEditingName("");
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end z-50">
       <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
-        <h2 className="text-lg font-bold mb-4">⚙️ إعدادات التطبيق</h2>
+        <h2 className="text-lg font-bold mb-4">⚙️ {language === "ar" ? "إعدادات التطبيق" : "App Settings"}</h2>
 
         {/* الوضع الليلي */}
         <div className="flex items-center justify-between mb-4">
-          <span>🌙 الوضع الليلي</span>
+          <span>🌙 {language === "ar" ? "الوضع الليلي" : "Dark Mode"}</span>
           <input type="checkbox" checked={darkMode} onChange={(e) => setDarkMode(e.target.checked)} />
         </div>
 
         {/* حجم الخط */}
         <div className="mb-4">
-          <span className="block mb-2">🔠 حجم الخط</span>
+          <span className="block mb-2">🔠 {language === "ar" ? "حجم الخط" : "Font Size"}</span>
           <select value={fontSize} onChange={(e) => setFontSize(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
-            <option value="small">صغير</option>
-            <option value="normal">عادي</option>
-            <option value="large">كبير</option>
+            <option value="small">{language === "ar" ? "صغير" : "Small"}</option>
+            <option value="normal">{language === "ar" ? "عادي" : "Normal"}</option>
+            <option value="large">{language === "ar" ? "كبير" : "Large"}</option>
           </select>
         </div>
 
-        {/* عرض المهام */}
+        {/* نمط عرض المهام */}
         <div className="mb-4">
-          <span className="block mb-2">📋 نمط عرض المهام</span>
+          <span className="block mb-2">📋 {language === "ar" ? "نمط عرض المهام" : "Task View"}</span>
           <select value={taskView} onChange={(e) => setTaskView(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
-            <option value="list">قائمة</option>
-            <option value="grid">شبكة</option>
+            <option value="list">{language === "ar" ? "قائمة" : "List"}</option>
+            <option value="grid">{language === "ar" ? "شبكة" : "Grid"}</option>
           </select>
         </div>
 
         {/* عرض مختصر */}
         <div className="flex items-center justify-between mb-4">
-          <span>🔎 عرض مختصر</span>
+          <span>🔎 {language === "ar" ? "عرض مختصر" : "Minimal View"}</span>
           <input type="checkbox" checked={minimalView} onChange={(e) => setMinimalView(e.target.checked)} />
         </div>
 
         {/* نغمة التذكيرات */}
         <div className="mb-4">
-          <span className="block mb-2">🔔 نغمة التذكيرات</span>
-          <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
-            <option value="default">افتراضية</option>
-            <option value="chime">Chime</option>
-            <option value="beep">Beep</option>
+          <span className="block mb-2">🔔 {language === "ar" ? "نغمة التذكيرات" : "Reminder Tone"}</span>
+          <div className="flex gap-2">
+            <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)} className="flex-1 p-2 border rounded dark:bg-gray-900">
+              <option value="default">{language === "ar" ? "افتراضية" : "Default"}</option>
+              <option value="chime">Chime</option>
+              <option value="beep">Beep</option>
+            </select>
+            <button onClick={onPlayTone} className="px-3 py-2 rounded bg-green-500 text-white">{language === "ar" ? "اختبار" : "Test"}</button>
+          </div>
+        </div>
+
+        {/* إدارة التصنيفات */}
+        <div className="mb-4">
+          <h3 className="font-semibold mb-2">{language === "ar" ? "التصنيفات" : "Categories"}</h3>
+
+          <div className="space-y-2 mb-2">
+            {categories && categories.length > 0 ? (
+              categories.map((c: Category) => (
+                <div key={c.id} className="flex items-center gap-2">
+                  {editingId === c.id ? (
+                    <>
+                      <input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="flex-1 p-2 border rounded dark:bg-gray-900" />
+                      <button onClick={saveEdit} className="px-3 py-1 rounded bg-blue-500 text-white">{language === "ar" ? "حفظ" : "Save"}</button>
+                      <button onClick={() => { setEditingId(null); setEditingName(""); }} className="px-3 py-1 rounded bg-gray-300">{language === "ar" ? "إلغاء" : "Cancel"}</button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1">{c.name}</div>
+                      <button onClick={() => startEdit(c)} className="px-3 py-1 rounded bg-yellow-400 text-white">{language === "ar" ? "تعديل" : "Edit"}</button>
+                      <button onClick={() => onCategoryDelete(c.id)} className="px-3 py-1 rounded bg-red-500 text-white">{language === "ar" ? "حذف" : "Delete"}</button>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500">{language === "ar" ? "لا توجد تصنيفات" : "No categories"}</div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder={language === "ar" ? "إضافة تصنيف جديد" : "Add new category"} className="flex-1 p-2 border rounded dark:bg-gray-900" />
+            <button onClick={handleAdd} className="px-3 py-2 rounded bg-blue-500 text-white">{language === "ar" ? "إضافة" : "Add"}</button>
+          </div>
+        </div>
+
+        {/* اختيار اللغة */}
+        <div className="mb-4">
+          <span className="block mb-2">🌐 {language === "ar" ? "اللغة" : "Language"}</span>
+          <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
+            <option value="ar">العربية</option>
+            <option value="en">English</option>
           </select>
         </div>
 
         {/* زر الأمان */}
-        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg mt-4 bg-blue-500">🔒 تأمين التطبيق</button>
+        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg mt-4 bg-blue-500">
+          🔒 {language === "ar" ? "تأمين التطبيق" : "App Security"}
+        </button>
 
-        <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-gray-500">إغلاق</button>
+        <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-gray-500">
+          {language === "ar" ? "إغلاق" : "Close"}
+        </button>
       </div>
     </div>
   );
@@ -411,12 +574,12 @@ const SettingsModal = ({
 /* ================================
    AiModal
 ================================ */
-const AiModal = ({ onClose }: any) => (
+const AiModal = ({ onClose, language }: any) => (
   <div className="fixed inset-0 bg-black/40 flex items-end z-50">
     <div className="bg-white dark:bg-gray-800 w-full p-4 rounded-t-2xl shadow-lg text-gray-900 dark:text-gray-100">
-      <h2 className="text-lg font-bold mb-4">🤖 المساعد الذكي</h2>
-      <p className="text-gray-600 dark:text-gray-300">هنا ستظهر ميزات المساعد الذكي لاحقًا.</p>
-      <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">إغلاق</button>
+      <h2 className="text-lg font-bold mb-4">🤖 {language === "ar" ? "المساعد الذكي" : "AI Assistant"}</h2>
+      <p className="text-gray-600 dark:text-gray-300">{language === "ar" ? "هنا ستظهر ميزات المساعد الذكي لاحقًا." : "AI features will appear here later."}</p>
+      <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">{language === "ar" ? "إغلاق" : "Close"}</button>
     </div>
   </div>
 );
