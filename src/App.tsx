@@ -7,8 +7,13 @@ import { Calendar } from "./components/Calendar";
 import { Goals } from "./components/Goals";
 import { Task, Category, Goal } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { initialCategories, initialTasks, initialGoals } from "./data/initialData";
+import {
+  initialCategories,
+  initialTasks,
+  initialGoals,
+} from "./data/initialData";
 import BottomBar from "./components/BottomBar";
+import { Settings, Bot } from "lucide-react";
 
 type ActiveModal = "settings" | "security" | "ai" | null;
 type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
@@ -18,36 +23,65 @@ function App() {
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
 
   // ⚙️ إعدادات عامة
-  const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
-  const [fontSize, setFontSize] = useLocalStorage<string>("settings-font-size", "normal");
-  const [taskView, setTaskView] = useLocalStorage<"list" | "grid">("settings-task-view", "list");
-  const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminder-tone", "default");
-  const [minimalView, setMinimalView] = useLocalStorage<boolean>("settings-minimal-view", false);
+  const [darkMode, setDarkMode] = useLocalStorage<boolean>(
+    "settings-darkMode",
+    false
+  );
+  const [fontSize, setFontSize] = useLocalStorage<string>(
+    "settings-font-size",
+    "normal"
+  );
+  const [taskView, setTaskView] = useLocalStorage<"list" | "grid">(
+    "settings-task-view",
+    "list"
+  );
+  const [reminderTone, setReminderTone] = useLocalStorage<string>(
+    "settings-reminder-tone",
+    "default"
+  );
+  const [minimalView, setMinimalView] = useLocalStorage<boolean>(
+    "settings-minimal-view",
+    false
+  );
 
-  // لغة الواجهة
-  const [language, setLanguage] = useLocalStorage<string>("settings-language", "ar"); // "ar" | "en"
+  // 🌐 لغة الواجهة
+  const [language, setLanguage] = useLocalStorage<string>(
+    "settings-language",
+    "ar"
+  );
 
   // 🔒 كلمة المرور
-  const [appPassword, setAppPassword] = useLocalStorage<string | null>("settings-app-password", null);
+  const [appPassword, setAppPassword] = useLocalStorage<string | null>(
+    "settings-app-password",
+    null
+  );
   const [appLockedSession, setAppLockedSession] = useState<boolean>(false);
 
-  // 🌓 تفعيل الوضع الليلي
+  // 🌓 الوضع الليلي
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // 🔁 ضبط اتجاه المستند بحسب اللغة (لا نغيّر الحجم)
-  // سنستخدم dir على مستوى الجذر داخل الـ JSX أيضاً (حتى لو هنا نتأكد)
+  // 🔁 ضبط اتجاه المستند
   useEffect(() => {
     document.documentElement.setAttribute("lang", language === "ar" ? "ar" : "en");
   }, [language]);
 
   // 🗂️ البيانات
-  const [tasks, setTasks] = useLocalStorage<Task[]>("productivity-tasks", initialTasks);
-  const [categories, setCategories] = useLocalStorage<Category[]>("productivity-categories", initialCategories);
-  const [goals, setGoals] = useLocalStorage<Goal[]>("productivity-goals", initialGoals);
+  const [tasks, setTasks] = useLocalStorage<Task[]>(
+    "productivity-tasks",
+    initialTasks
+  );
+  const [categories, setCategories] = useLocalStorage<Category[]>(
+    "productivity-categories",
+    initialCategories
+  );
+  const [goals, setGoals] = useLocalStorage<Goal[]>(
+    "productivity-goals",
+    initialGoals
+  );
 
-  // 🤖 AI Insights (قابلة للتجاهل إن لم يكن السيرفر شغّال)
+  // 🤖 AI Insights
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   useEffect(() => {
     const fetchInsights = async () => {
@@ -60,31 +94,27 @@ function App() {
         const data = await response.json();
         setAiInsights(data.insights || null);
       } catch {
-        // لا نوقف التطبيق إن فشل الاتصال
         console.warn("⚠️ تعذّر الاتصال بسيرفر AI.");
       }
     };
     if (tasks.length > 0) fetchInsights();
   }, [tasks]);
 
-  // 🚪 عند بداية الجلسة
+  // 🚪 بداية الجلسة
   useEffect(() => {
     if (appPassword) setAppLockedSession(true);
     else setAppLockedSession(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appPassword]);
 
   /* ================================
      🔔 تشغيل نغمة التذكيرات
   ================================= */
   const playReminderTone = (tone: string) => {
-    // الملفات يجب أن تكون في public/sounds/
     let file = "/sounds/default.mp3";
     if (tone === "chime") file = "/sounds/chime.mp3";
     if (tone === "beep") file = "/sounds/beep.mp3";
 
     const audio = new Audio(file);
-    // التشغيل قد يُمنَع إلا بعد تفاعل المستخدم — لكن نحن نستدعي هذا عند نقر المستخدم عادةً
     audio.play().catch(() => console.warn("⚠️ تعذّر تشغيل الصوت"));
   };
 
@@ -94,8 +124,6 @@ function App() {
   const handleTaskAdd = (newTask: Omit<Task, "id">) => {
     const task: Task = { ...newTask, id: Date.now().toString() };
     setTasks((prev) => [...prev, task]);
-
-    // تشغيل النغمة بعد إضافة المهمة — تم التفاعل من قبل المستخدم
     playReminderTone(reminderTone);
   };
   const handleTaskUpdate = (updatedTask: Task) => {
@@ -109,8 +137,6 @@ function App() {
   const handleGoalAdd = (newGoal: Omit<Goal, "id">) => {
     const goal: Goal = { ...newGoal, id: Date.now().toString() };
     setGoals((prev) => [...prev, goal]);
-
-    // تشغيل نغمة عند إضافة هدف (اختياري)
     playReminderTone(reminderTone);
   };
   const handleGoalUpdate = (updatedGoal: Goal) => {
@@ -118,7 +144,7 @@ function App() {
   };
 
   // ===========================
-  // إدارة التصنيفات (Categories) — add / update / delete
+  // إدارة التصنيفات
   // ===========================
   const getDefaultCategoryName = (cats: Category[]) => {
     return cats && cats.length > 0 ? cats[0].name : language === "ar" ? "عام" : "General";
@@ -135,8 +161,6 @@ function App() {
     const trimmed = name.trim();
     if (!trimmed) return;
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: trimmed } : c)));
-    // لا نحتاج لتعديل المهام هنا لأن الاسم تغيّر فقط و المهام تشير بالاسم؛ إذا أردت أن نزامن اسم قديم -> جديد
-    // يمكنك إضافته لاحقاً إذا لزم.
   };
 
   const handleCategoryDelete = (id: string) => {
@@ -146,9 +170,10 @@ function App() {
       const newDefault = getDefaultCategoryName(newCats);
 
       if (toDelete) {
-        // إذا وُجدت مهام تستخدم هذه الفئة -> نبدّلها للافتة الافتراضية الجديدة
         setTasks((prevTasks) =>
-          prevTasks.map((t) => (t.category === toDelete.name ? { ...t, category: newDefault } : t))
+          prevTasks.map((t) =>
+            t.category === toDelete.name ? { ...t, category: newDefault } : t
+          )
         );
       }
       return newCats;
@@ -169,7 +194,9 @@ function App() {
             <Dashboard tasks={tasks} goals={goals} />
             {aiInsights && (
               <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
-                <h2 className="font-bold mb-2 text-blue-500">🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}</h2>
+                <h2 className="font-bold mb-2 text-blue-500">
+                  🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}
+                </h2>
                 <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
               </div>
             )}
@@ -185,19 +212,27 @@ function App() {
             onTaskDelete={handleTaskDelete}
             taskView={taskView}
             minimalView={minimalView}
-            language={language === "ar" ? "ar" : "en"}
+            language={language}
           />
         );
       case "calendar":
         return <Calendar tasks={tasks} />;
       case "goals":
-        return <Goals goals={goals} tasks={tasks} onGoalAdd={handleGoalAdd} onGoalUpdate={handleGoalUpdate} />;
+        return (
+          <Goals
+            goals={goals}
+            tasks={tasks}
+            onGoalAdd={handleGoalAdd}
+            onGoalUpdate={handleGoalUpdate}
+            language={language}
+          />
+        );
       default:
         return <Dashboard tasks={tasks} goals={goals} />;
     }
   };
 
-  // المودالات (Settings / Security / AI)
+  // المودالات
   const renderModal = () => {
     if (activeModal === "settings") {
       return (
@@ -228,9 +263,14 @@ function App() {
       return (
         <div className="fixed inset-0 bg-black/40 flex items-end z-50">
           <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
-            <h2 className="text-lg font-bold mb-4 text-blue-500">🔒 {language === "ar" ? "تأمين التطبيق" : "App Security"}</h2>
+            <h2 className="text-lg font-bold mb-4 text-blue-500">
+              🔒 {language === "ar" ? "تأمين التطبيق" : "App Security"}
+            </h2>
             <LockSettings password={appPassword} setPassword={setAppPassword} language={language} />
-            <button onClick={() => setActiveModal(null)} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">
+            <button
+              onClick={() => setActiveModal(null)}
+              className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500"
+            >
               {language === "ar" ? "إغلاق" : "Close"}
             </button>
           </div>
@@ -243,19 +283,30 @@ function App() {
     return null;
   };
 
-  // Root render
   return (
     <div
       className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 ${
         fontSize === "small" ? "text-sm" : fontSize === "large" ? "text-lg" : "text-base"
       }`}
       dir={language === "ar" ? "rtl" : "ltr"}
-      lang={language === "ar" ? "ar" : "en"}
+      lang={language}
     >
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} language={language} setLanguage={setLanguage} />
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        language={language}
+        setLanguage={setLanguage}
+      />
       <main className="pb-20">{renderActiveTab()}</main>
 
-      <BottomBar onOpenSettings={() => setActiveModal("settings")} onOpenAI={() => setActiveModal("ai")} language={language} />
+      {/* ✅ أيقونات محسنة (إعدادات + AI) */}
+      <BottomBar
+        onOpenSettings={() => setActiveModal("settings")}
+        onOpenAI={() => setActiveModal("ai")}
+        language={language}
+        settingsIcon={<Settings className="w-6 h-6" />}
+        aiIcon={<Bot className="w-6 h-6" />}
+      />
 
       {renderModal()}
     </div>
@@ -266,9 +317,14 @@ export default App;
 
 /* ================================
    LockScreen
-   (يبقى كما كان — مع دعم لغتين)
 ================================ */
-const LockScreen = ({ savedPassword, onUnlock }: { savedPassword: string; onUnlock: () => void }) => {
+const LockScreen = ({
+  savedPassword,
+  onUnlock,
+}: {
+  savedPassword: string;
+  onUnlock: () => void;
+}) => {
   const [entered, setEntered] = useState("");
   const [error, setError] = useState("");
 
@@ -300,7 +356,10 @@ const LockScreen = ({ savedPassword, onUnlock }: { savedPassword: string; onUnlo
           className="w-full p-2 border rounded mb-3 dark:bg-gray-900"
         />
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
-        <button onClick={handleUnlock} className="w-full text-white py-2 rounded bg-blue-500">
+        <button
+          onClick={handleUnlock}
+          className="w-full text-white py-2 rounded bg-blue-500"
+        >
           فتح التطبيق
         </button>
       </div>
@@ -311,12 +370,25 @@ const LockScreen = ({ savedPassword, onUnlock }: { savedPassword: string; onUnlo
 /* ================================
    LockSettings
 ================================ */
-const LockSettings = ({ password, setPassword, language }: { password: string | null; setPassword: (pw: string | null) => void; language: string }) => {
-  const [mode, setMode] = useState<"setup" | "change" | "remove">(password ? "change" : "setup");
+const LockSettings = ({
+  password,
+  setPassword,
+  language,
+}: {
+  password: string | null;
+  setPassword: (pw: string | null) => void;
+  language: string;
+}) => {
+  const [mode, setMode] = useState<"setup" | "change" | "remove">(
+    password ? "change" : "setup"
+  );
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
-  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   const reset = () => {
     setOldPw("");
@@ -327,46 +399,78 @@ const LockSettings = ({ password, setPassword, language }: { password: string | 
   const handleCreate = () => {
     setMessage(null);
     if (!newPw || newPw.length < 4) {
-      setMessage({ type: "err", text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short" });
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short",
+      });
       return;
     }
     if (newPw !== confirmPw) {
-      setMessage({ type: "err", text: language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match" });
+      setMessage({
+        type: "err",
+        text:
+          language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
+      });
       return;
     }
     setPassword(newPw);
     reset();
-    setMessage({ type: "ok", text: language === "ar" ? "✅ تم إنشاء كلمة المرور" : "Password created" });
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم إنشاء كلمة المرور" : "Password created",
+    });
     setMode("change");
   };
 
   const handleChange = () => {
     if (oldPw !== password) {
-      setMessage({ type: "err", text: language === "ar" ? "❌ كلمة المرور القديمة خاطئة" : "Old password incorrect" });
+      setMessage({
+        type: "err",
+        text:
+          language === "ar"
+            ? "❌ كلمة المرور القديمة خاطئة"
+            : "Old password incorrect",
+      });
       return;
     }
     if (!newPw || newPw.length < 4) {
-      setMessage({ type: "err", text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short" });
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short",
+      });
       return;
     }
     if (newPw !== confirmPw) {
-      setMessage({ type: "err", text: language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match" });
+      setMessage({
+        type: "err",
+        text:
+          language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
+      });
       return;
     }
     setPassword(newPw);
     reset();
-    setMessage({ type: "ok", text: language === "ar" ? "✅ تم تغيير كلمة المرور" : "Password changed" });
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم تغيير كلمة المرور" : "Password changed",
+    });
   };
 
   const handleRemove = () => {
     if (oldPw !== password) {
-      setMessage({ type: "err", text: language === "ar" ? "❌ كلمة المرور خاطئة" : "Password incorrect" });
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "❌ كلمة المرور خاطئة" : "Password incorrect",
+      });
       return;
     }
     setPassword(null);
     reset();
     setMode("setup");
-    setMessage({ type: "ok", text: language === "ar" ? "✅ تم إلغاء كلمة المرور" : "Password removed" });
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم إلغاء كلمة المرور" : "Password removed",
+    });
   };
 
   return (
@@ -378,7 +482,9 @@ const LockSettings = ({ password, setPassword, language }: { password: string | 
             reset();
             setMessage(null);
           }}
-          className={`flex-1 py-2 rounded ${mode === "setup" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}
+          className={`flex-1 py-2 rounded ${
+            mode === "setup" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
         >
           {language === "ar" ? "إنشاء" : "Create"}
         </button>
@@ -388,7 +494,9 @@ const LockSettings = ({ password, setPassword, language }: { password: string | 
             reset();
             setMessage(null);
           }}
-          className={`flex-1 py-2 rounded ${mode === "change" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}
+          className={`flex-1 py-2 rounded ${
+            mode === "change" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
         >
           {language === "ar" ? "تغيير" : "Change"}
         </button>
@@ -398,7 +506,9 @@ const LockSettings = ({ password, setPassword, language }: { password: string | 
             reset();
             setMessage(null);
           }}
-          className={`flex-1 py-2 rounded ${mode === "remove" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}
+          className={`flex-1 py-2 rounded ${
+            mode === "remove" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
         >
           {language === "ar" ? "إلغاء" : "Remove"}
         </button>
@@ -406,36 +516,98 @@ const LockSettings = ({ password, setPassword, language }: { password: string | 
 
       {mode === "setup" && (
         <div className="space-y-3">
-          <input type="password" placeholder={language === "ar" ? "كلمة المرور" : "Password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <input type="password" placeholder={language === "ar" ? "تأكيد كلمة المرور" : "Confirm password"} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleCreate} className="w-full text-white py-2 rounded bg-blue-500">{language === "ar" ? "حفظ" : "Save"}</button>
+          <input
+            type="password"
+            placeholder={language === "ar" ? "كلمة المرور" : "Password"}
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleCreate}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "حفظ" : "Save"}
+          </button>
         </div>
       )}
 
       {mode === "change" && (
         <div className="space-y-3">
-          <input type="password" placeholder={language === "ar" ? "كلمة المرور الحالية" : "Current password"} value={oldPw} onChange={(e) => setOldPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <input type="password" placeholder={language === "ar" ? "كلمة المرور الجديدة" : "New password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <input type="password" placeholder={language === "ar" ? "تأكيد الجديدة" : "Confirm new"} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleChange} className="w-full text-white py-2 rounded bg-blue-500">{language === "ar" ? "تغيير" : "Change"}</button>
+          <input
+            type="password"
+            placeholder={
+              language === "ar" ? "كلمة المرور الحالية" : "Current password"
+            }
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "كلمة المرور الجديدة" : "New password"}
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "تأكيد الجديدة" : "Confirm new"}
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleChange}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "تغيير" : "Change"}
+          </button>
         </div>
       )}
 
       {mode === "remove" && (
         <div className="space-y-3">
-          <input type="password" placeholder={language === "ar" ? "كلمة المرور الحالية" : "Current password"} value={oldPw} onChange={(e) => setOldPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleRemove} className="w-full text-white py-2 rounded bg-blue-500">{language === "ar" ? "إلغاء التأمين" : "Remove security"}</button>
+          <input
+            type="password"
+            placeholder={
+              language === "ar" ? "كلمة المرور الحالية" : "Current password"
+            }
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleRemove}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "إلغاء التأمين" : "Remove security"}
+          </button>
         </div>
       )}
 
-      {message && <p className={`mt-3 text-sm ${message.type === "ok" ? "text-green-600" : "text-red-600"}`}>{message.text}</p>}
+      {message && (
+        <p
+          className={`mt-3 text-sm ${
+            message.type === "ok" ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
     </div>
   );
 };
 
 /* ================================
    SettingsModal
-   (يتضمن الآن إدارة التصنيفات + اختيار اللغة)
 ================================ */
 const SettingsModal = ({
   darkMode,
@@ -449,7 +621,6 @@ const SettingsModal = ({
   reminderTone,
   setReminderTone,
   categories,
-  setCategories,
   onAddCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -485,18 +656,30 @@ const SettingsModal = ({
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end z-50">
       <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
-        <h2 className="text-lg font-bold mb-4">⚙️ {language === "ar" ? "إعدادات التطبيق" : "App Settings"}</h2>
+        <h2 className="text-lg font-bold mb-4">
+          ⚙️ {language === "ar" ? "إعدادات التطبيق" : "App Settings"}
+        </h2>
 
         {/* الوضع الليلي */}
         <div className="flex items-center justify-between mb-4">
           <span>🌙 {language === "ar" ? "الوضع الليلي" : "Dark mode"}</span>
-          <input type="checkbox" checked={darkMode} onChange={(e: any) => setDarkMode(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={darkMode}
+            onChange={(e: any) => setDarkMode(e.target.checked)}
+          />
         </div>
 
         {/* حجم الخط */}
         <div className="mb-4">
-          <span className="block mb-2">🔠 {language === "ar" ? "حجم الخط" : "Font size"}</span>
-          <select value={fontSize} onChange={(e) => setFontSize(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
+          <span className="block mb-2">
+            🔠 {language === "ar" ? "حجم الخط" : "Font size"}
+          </span>
+          <select
+            value={fontSize}
+            onChange={(e) => setFontSize(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
             <option value="small">{language === "ar" ? "صغير" : "Small"}</option>
             <option value="normal">{language === "ar" ? "عادي" : "Normal"}</option>
             <option value="large">{language === "ar" ? "كبير" : "Large"}</option>
@@ -505,8 +688,14 @@ const SettingsModal = ({
 
         {/* نمط عرض المهام */}
         <div className="mb-4">
-          <span className="block mb-2">📋 {language === "ar" ? "نمط عرض المهام" : "Task view"}</span>
-          <select value={taskView} onChange={(e) => setTaskView(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
+          <span className="block mb-2">
+            📋 {language === "ar" ? "نمط عرض المهام" : "Task view"}
+          </span>
+          <select
+            value={taskView}
+            onChange={(e) => setTaskView(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
             <option value="list">{language === "ar" ? "قائمة" : "List"}</option>
             <option value="grid">{language === "ar" ? "شبكة" : "Grid"}</option>
           </select>
@@ -515,14 +704,26 @@ const SettingsModal = ({
         {/* عرض مختصر */}
         <div className="flex items-center justify-between mb-4">
           <span>🔎 {language === "ar" ? "عرض مختصر" : "Minimal view"}</span>
-          <input type="checkbox" checked={minimalView} onChange={(e: any) => setMinimalView(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={minimalView}
+            onChange={(e: any) => setMinimalView(e.target.checked)}
+          />
         </div>
 
         {/* نغمة التذكيرات */}
         <div className="mb-4">
-          <span className="block mb-2">🔔 {language === "ar" ? "نغمة التذكيرات" : "Reminder tone"}</span>
-          <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
-            <option value="default">{language === "ar" ? "افتراضية" : "Default"}</option>
+          <span className="block mb-2">
+            🔔 {language === "ar" ? "نغمة التذكيرات" : "Reminder tone"}
+          </span>
+          <select
+            value={reminderTone}
+            onChange={(e) => setReminderTone(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
+            <option value="default">
+              {language === "ar" ? "افتراضية" : "Default"}
+            </option>
             <option value="chime">Chime</option>
             <option value="beep">Beep</option>
           </select>
@@ -530,8 +731,14 @@ const SettingsModal = ({
 
         {/* اختيار اللغة */}
         <div className="mb-4">
-          <span className="block mb-2">🌐 {language === "ar" ? "لغة الواجهة" : "Interface language"}</span>
-          <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
+          <span className="block mb-2">
+            🌐 {language === "ar" ? "لغة الواجهة" : "Interface language"}
+          </span>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
             <option value="ar">العربية</option>
             <option value="en">English</option>
           </select>
@@ -540,14 +747,31 @@ const SettingsModal = ({
         {/* إدارة التصنيفات */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">{language === "ar" ? "التصنيفات" : "Categories"}</h3>
-            <button onClick={() => setShowAddCat(!showAddCat)} className="text-sm text-blue-600">{language === "ar" ? "إضافة" : "Add"}</button>
+            <h3 className="font-semibold">
+              {language === "ar" ? "التصنيفات" : "Categories"}
+            </h3>
+            <button
+              onClick={() => setShowAddCat(!showAddCat)}
+              className="text-sm text-blue-600"
+            >
+              {language === "ar" ? "إضافة" : "Add"}
+            </button>
           </div>
 
           {showAddCat && (
             <div className="flex gap-2 mb-2">
-              <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} className="flex-1 p-2 border rounded dark:bg-gray-900" placeholder={language === "ar" ? "اسم التصنيف" : "Category name"} />
-              <button onClick={addCategory} className="px-3 py-2 bg-blue-600 text-white rounded">{language === "ar" ? "حفظ" : "Save"}</button>
+              <input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                className="flex-1 p-2 border rounded dark:bg-gray-900"
+                placeholder={language === "ar" ? "اسم التصنيف" : "Category name"}
+              />
+              <button
+                onClick={addCategory}
+                className="px-3 py-2 bg-blue-600 text-white rounded"
+              >
+                {language === "ar" ? "حفظ" : "Save"}
+              </button>
             </div>
           )}
 
@@ -556,15 +780,42 @@ const SettingsModal = ({
               <div key={c.id} className="flex items-center gap-2">
                 {editingId === c.id ? (
                   <>
-                    <input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="flex-1 p-2 border rounded dark:bg-gray-900" />
-                    <button onClick={saveEdit} className="px-3 py-2 bg-green-600 text-white rounded">{language === "ar" ? "حفظ" : "Save"}</button>
-                    <button onClick={() => { setEditingId(null); setEditingName(""); }} className="px-3 py-2 bg-gray-200 rounded">{language === "ar" ? "إلغاء" : "Cancel"}</button>
+                    <input
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="flex-1 p-2 border rounded dark:bg-gray-900"
+                    />
+                    <button
+                      onClick={saveEdit}
+                      className="px-3 py-2 bg-green-600 text-white rounded"
+                    >
+                      {language === "ar" ? "حفظ" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingName("");
+                      }}
+                      className="px-3 py-2 bg-gray-200 rounded"
+                    >
+                      {language === "ar" ? "إلغاء" : "Cancel"}
+                    </button>
                   </>
                 ) : (
                   <>
                     <span className="flex-1">{c.name}</span>
-                    <button onClick={() => startEdit(c.id, c.name)} className="px-3 py-1 bg-yellow-200 rounded text-sm">{language === "ar" ? "تعديل" : "Edit"}</button>
-                    <button onClick={() => onDeleteCategory(c.id)} className="px-3 py-1 bg-red-500 text-white rounded text-sm">{language === "ar" ? "حذف" : "Delete"}</button>
+                    <button
+                      onClick={() => startEdit(c.id, c.name)}
+                      className="px-3 py-1 bg-yellow-200 rounded text-sm"
+                    >
+                      {language === "ar" ? "تعديل" : "Edit"}
+                    </button>
+                    <button
+                      onClick={() => onDeleteCategory(c.id)}
+                      className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+                    >
+                      {language === "ar" ? "حذف" : "Delete"}
+                    </button>
                   </>
                 )}
               </div>
@@ -573,8 +824,18 @@ const SettingsModal = ({
         </div>
 
         <div className="flex gap-2">
-          <button onClick={onOpenSecurity} className="flex-1 text-white py-2 rounded-lg bg-blue-500">{language === "ar" ? "🔒 تأمين التطبيق" : "🔒 App security"}</button>
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-gray-500 text-white">{language === "ar" ? "إغلاق" : "Close"}</button>
+          <button
+            onClick={onOpenSecurity}
+            className="flex-1 text-white py-2 rounded-lg bg-blue-500"
+          >
+            {language === "ar" ? "🔒 تأمين التطبيق" : "🔒 App security"}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg bg-gray-500 text-white"
+          >
+            {language === "ar" ? "إغلاق" : "Close"}
+          </button>
         </div>
       </div>
     </div>
@@ -582,14 +843,25 @@ const SettingsModal = ({
 };
 
 /* ================================
-   AiModal (بسيط)
+   AiModal
 ================================ */
 const AiModal = ({ onClose, language }: any) => (
   <div className="fixed inset-0 bg-black/40 flex items-end z-50">
     <div className="bg-white dark:bg-gray-800 w-full p-4 rounded-t-2xl shadow-lg text-gray-900 dark:text-gray-100">
-      <h2 className="text-lg font-bold mb-4">🤖 {language === "ar" ? "المساعد الذكي" : "Smart Assistant"}</h2>
-      <p className="text-gray-600 dark:text-gray-300">{language === "ar" ? "هنا ستظهر ميزات المساعد الذكي لاحقًا." : "AI features will appear here."}</p>
-      <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">{language === "ar" ? "إغلاق" : "Close"}</button>
+      <h2 className="text-lg font-bold mb-4">
+        🤖 {language === "ar" ? "المساعد الذكي" : "Smart Assistant"}
+      </h2>
+      <p className="text-gray-600 dark:text-gray-300">
+        {language === "ar"
+          ? "هنا ستظهر ميزات المساعد الذكي لاحقًا."
+          : "AI features will appear here."}
+      </p>
+      <button
+        onClick={onClose}
+        className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500"
+      >
+        {language === "ar" ? "إغلاق" : "Close"}
+      </button>
     </div>
   </div>
 );
