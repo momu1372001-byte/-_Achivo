@@ -13,6 +13,7 @@ import {
   initialGoals,
 } from "./data/initialData";
 import BottomBar from "./components/BottomBar";
+import { Moon, Type, LayoutGrid, Bell, Palette, Shield } from "lucide-react";
 
 type ActiveModal = "settings" | "security" | "ai" | null;
 type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
@@ -23,7 +24,7 @@ function App() {
 
   // إعدادات عامة
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
-  const [themeColor, setThemeColor] = useLocalStorage<string>("settings-theme-color", "#3b82f6"); // افتراضي أزرق
+  const [themeColor, setThemeColor] = useLocalStorage<string>("settings-theme-color", "#3b82f6");
   const [fontSize, setFontSize] = useLocalStorage<string>("settings-font-size", "normal");
   const [taskView, setTaskView] = useLocalStorage<"list" | "grid">("settings-task-view", "list");
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminder-tone", "default");
@@ -336,7 +337,7 @@ const LockSettings = ({ password, setPassword, themeColor }: { password: string 
 };
 
 /* ================================
-   SettingsModal
+   SettingsModal (مجددة وجذابة)
 ================================ */
 const SettingsModal = ({
   darkMode,
@@ -359,18 +360,18 @@ const SettingsModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end z-50 text-gray-900 dark:text-gray-100">
-      <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-bold mb-4">⚙️ إعدادات التطبيق</h2>
+      <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto space-y-6">
+        <h2 className="text-xl font-bold mb-4 text-center" style={{ color: themeColor }}>⚙️ إعدادات التطبيق</h2>
 
         {/* الوضع الليلي */}
-        <div className="flex items-center justify-between mb-4">
-          <span>الوضع الليلي</span>
+        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2"><Moon size={18} /><span>الوضع الليلي</span></div>
           <input type="checkbox" checked={darkMode} onChange={(e) => setDarkMode(e.target.checked)} />
         </div>
 
         {/* حجم الخط */}
-        <div className="mb-4">
-          <span className="block mb-2">حجم الخط</span>
+        <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2 mb-2"><Type size={18} /><span>حجم الخط</span></div>
           <select value={fontSize} onChange={(e) => setFontSize(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
             <option value="small">صغير</option>
             <option value="normal">عادي</option>
@@ -379,8 +380,8 @@ const SettingsModal = ({
         </div>
 
         {/* عرض المهام */}
-        <div className="mb-4">
-          <span className="block mb-2">نمط عرض المهام</span>
+        <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2 mb-2"><LayoutGrid size={18} /><span>نمط عرض المهام</span></div>
           <select value={taskView} onChange={(e) => setTaskView(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
             <option value="list">قائمة</option>
             <option value="grid">شبكة</option>
@@ -388,14 +389,14 @@ const SettingsModal = ({
         </div>
 
         {/* عرض مختصر */}
-        <div className="flex items-center justify-between mb-4">
-          <span>📋 عرض مختصر</span>
+        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2"><LayoutGrid size={18} /><span>📋 عرض مختصر</span></div>
           <input type="checkbox" checked={minimalView} onChange={(e) => setMinimalView(e.target.checked)} />
         </div>
 
         {/* نغمة التذكيرات */}
-        <div className="mb-4">
-          <span className="block mb-2">🔔 نغمة التذكيرات</span>
+        <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2 mb-2"><Bell size={18} /><span>🔔 نغمة التذكيرات</span></div>
           <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900">
             <option value="default">افتراضية</option>
             <option value="chime">Chime</option>
@@ -404,13 +405,14 @@ const SettingsModal = ({
         </div>
 
         {/* ألوان التطبيق */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowColors(!showColors)}
-            className="w-full py-2 rounded text-white"
-            style={{ backgroundColor: themeColor }}
-          >
-            🎨 تخصيص الألوان
+        <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <div className="flex items-center gap-2 mb-2"><Palette size={18} /><span>🎨 تخصيص الألوان</span></div>
+          <div className="mb-2 flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: themeColor }}></div>
+            <span className="text-sm">اللون الحالي</span>
+          </div>
+          <button onClick={() => setShowColors(!showColors)} className="w-full py-2 rounded text-white" style={{ backgroundColor: themeColor }}>
+            {showColors ? "إخفاء الألوان" : "عرض الألوان"}
           </button>
           {showColors && (
             <div className="grid grid-cols-6 gap-2 mt-3">
@@ -427,11 +429,11 @@ const SettingsModal = ({
         </div>
 
         {/* زر الأمان */}
-        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg mt-4" style={{ backgroundColor: themeColor }}>
-          🔒 تأمين التطبيق
+        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg flex items-center justify-center gap-2" style={{ backgroundColor: themeColor }}>
+          <Shield size={18} /> 🔒 تأمين التطبيق
         </button>
 
-        <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg" style={{ backgroundColor: themeColor }}>
+        <button onClick={onClose} className="mt-2 w-full text-white py-2 rounded-lg" style={{ backgroundColor: themeColor }}>
           إغلاق
         </button>
       </div>
