@@ -21,28 +21,28 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tabs>("dashboard");
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
 
-  // إعدادات عامة
+  // ⚙️ إعدادات عامة
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
   const [fontSize, setFontSize] = useLocalStorage<string>("settings-font-size", "normal");
   const [taskView, setTaskView] = useLocalStorage<"list" | "grid">("settings-task-view", "list");
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminder-tone", "default");
   const [minimalView, setMinimalView] = useLocalStorage<boolean>("settings-minimal-view", false);
 
-  // كلمة المرور
+  // 🔒 كلمة المرور
   const [appPassword, setAppPassword] = useLocalStorage<string | null>("settings-app-password", null);
   const [appLockedSession, setAppLockedSession] = useState<boolean>(false);
 
-  // تفعيل الوضع الليلي
+  // 🌓 تفعيل الوضع الليلي
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // البيانات
+  // 🗂️ البيانات
   const [tasks, setTasks] = useLocalStorage<Task[]>("productivity-tasks", initialTasks);
   const [categories, setCategories] = useLocalStorage<Category[]>("productivity-categories", initialCategories);
   const [goals, setGoals] = useLocalStorage<Goal[]>("productivity-goals", initialGoals);
 
-  // AI
+  // 🤖 AI Insights
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   useEffect(() => {
     const fetchInsights = async () => {
@@ -61,7 +61,7 @@ function App() {
     if (tasks.length > 0) fetchInsights();
   }, [tasks]);
 
-  // عند بداية الجلسة
+  // 🚪 عند بداية الجلسة
   useEffect(() => {
     if (appPassword) setAppLockedSession(true);
     else setAppLockedSession(false);
@@ -80,7 +80,7 @@ function App() {
     audio.play().catch(() => console.warn("⚠️ تعذّر تشغيل الصوت"));
   };
 
-  // إدارة المهام
+  // 📋 إدارة المهام
   const handleTaskAdd = (newTask: Omit<Task, "id">) => {
     const task: Task = { ...newTask, id: Date.now().toString() };
     setTasks((prev) => [...prev, task]);
@@ -95,24 +95,24 @@ function App() {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
   };
 
-  // إدارة الأهداف
+  // 🎯 إدارة الأهداف
   const handleGoalAdd = (newGoal: Omit<Goal, "id">) => {
     const goal: Goal = { ...newGoal, id: Date.now().toString() };
     setGoals((prev) => [...prev, goal]);
 
-    // 🔔 ممكن تضيف صوت كمان عند إضافة هدف
+    // ✅ تشغيل النغمة عند إضافة هدف
     playReminderTone(reminderTone);
   };
   const handleGoalUpdate = (updatedGoal: Goal) => {
     setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
   };
 
-  // شاشة القفل
+  // 🔐 شاشة القفل
   if (appLockedSession && appPassword) {
     return <LockScreen savedPassword={appPassword} onUnlock={() => setAppLockedSession(false)} />;
   }
 
-  // التبويبات
+  // 📑 التبويبات
   const renderActiveTab = () => {
     switch (activeTab) {
       case "dashboard":
@@ -148,7 +148,7 @@ function App() {
     }
   };
 
-  // المودالات
+  // ⚙️ المودالات
   const renderModal = () => {
     if (activeModal === "settings") {
       return (
