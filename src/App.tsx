@@ -23,7 +23,6 @@ function App() {
 
   // إعدادات عامة
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("settings-darkMode", false);
-  const [themeColor, setThemeColor] = useLocalStorage<string>("settings-theme-color", "#3b82f6");
   const [fontSize, setFontSize] = useLocalStorage<string>("settings-font-size", "normal");
   const [taskView, setTaskView] = useLocalStorage<"list" | "grid">("settings-task-view", "list");
   const [reminderTone, setReminderTone] = useLocalStorage<string>("settings-reminder-tone", "default");
@@ -37,11 +36,6 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
-
-  // تفعيل اللون الرئيسي
-  useEffect(() => {
-    document.documentElement.style.setProperty("--theme-color", themeColor);
-  }, [themeColor]);
 
   // البيانات
   const [tasks, setTasks] = useLocalStorage<Task[]>("productivity-tasks", initialTasks);
@@ -97,7 +91,7 @@ function App() {
 
   // شاشة القفل
   if (appLockedSession && appPassword) {
-    return <LockScreen savedPassword={appPassword} onUnlock={() => setAppLockedSession(false)} themeColor={themeColor} />;
+    return <LockScreen savedPassword={appPassword} onUnlock={() => setAppLockedSession(false)} />;
   }
 
   // التبويبات
@@ -108,8 +102,8 @@ function App() {
           <>
             <Dashboard tasks={tasks} goals={goals} />
             {aiInsights && (
-              <div className="m-4 p-4 border rounded-lg shadow" style={{ borderColor: themeColor }}>
-                <h2 className="font-bold mb-2" style={{ color: themeColor }}>🤖 تحليلات الذكاء الاصطناعي</h2>
+              <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
+                <h2 className="font-bold mb-2 text-blue-500">🤖 تحليلات الذكاء الاصطناعي</h2>
                 <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
               </div>
             )}
@@ -151,8 +145,6 @@ function App() {
           setMinimalView={setMinimalView}
           reminderTone={reminderTone}
           setReminderTone={setReminderTone}
-          themeColor={themeColor}
-          setThemeColor={setThemeColor}
           onOpenSecurity={() => setActiveModal("security")}
           onClose={() => setActiveModal(null)}
         />
@@ -163,9 +155,9 @@ function App() {
       return (
         <div className="fixed inset-0 bg-black/40 flex items-end z-50">
           <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
-            <h2 className="text-lg font-bold mb-4" style={{ color: themeColor }}>🔒 تأمين التطبيق</h2>
-            <LockSettings password={appPassword} setPassword={setAppPassword} themeColor={themeColor} />
-            <button onClick={() => setActiveModal(null)} className="mt-4 w-full text-white py-2 rounded-lg" style={{ backgroundColor: themeColor }}>
+            <h2 className="text-lg font-bold mb-4 text-blue-500">🔒 تأمين التطبيق</h2>
+            <LockSettings password={appPassword} setPassword={setAppPassword} />
+            <button onClick={() => setActiveModal(null)} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">
               إغلاق
             </button>
           </div>
@@ -174,7 +166,7 @@ function App() {
     }
 
     if (activeModal === "ai") {
-      return <AiModal onClose={() => setActiveModal(null)} themeColor={themeColor} />;
+      return <AiModal onClose={() => setActiveModal(null)} />;
     }
 
     return null;
@@ -190,7 +182,7 @@ function App() {
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="pb-20">{renderActiveTab()}</main>
 
-      <BottomBar onOpenSettings={() => setActiveModal("settings")} onOpenAI={() => setActiveModal("ai")} themeColor={themeColor} />
+      <BottomBar onOpenSettings={() => setActiveModal("settings")} onOpenAI={() => setActiveModal("ai")} />
 
       {renderModal()}
     </div>
@@ -202,7 +194,7 @@ export default App;
 /* ================================
    LockScreen
 ================================ */
-const LockScreen = ({ savedPassword, onUnlock, themeColor }: { savedPassword: string; onUnlock: () => void; themeColor: string }) => {
+const LockScreen = ({ savedPassword, onUnlock }: { savedPassword: string; onUnlock: () => void }) => {
   const [entered, setEntered] = useState("");
   const [error, setError] = useState("");
 
@@ -229,7 +221,7 @@ const LockScreen = ({ savedPassword, onUnlock, themeColor }: { savedPassword: st
           className="w-full p-2 border rounded mb-3 dark:bg-gray-900"
         />
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
-        <button onClick={handleUnlock} className="w-full text-white py-2 rounded" style={{ backgroundColor: themeColor }}>
+        <button onClick={handleUnlock} className="w-full text-white py-2 rounded bg-blue-500">
           فتح التطبيق
         </button>
       </div>
@@ -240,7 +232,7 @@ const LockScreen = ({ savedPassword, onUnlock, themeColor }: { savedPassword: st
 /* ================================
    LockSettings
 ================================ */
-const LockSettings = ({ password, setPassword, themeColor }: { password: string | null; setPassword: (pw: string | null) => void; themeColor: string }) => {
+const LockSettings = ({ password, setPassword }: { password: string | null; setPassword: (pw: string | null) => void }) => {
   const [mode, setMode] = useState<"setup" | "change" | "remove">(password ? "change" : "setup");
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -297,16 +289,16 @@ const LockSettings = ({ password, setPassword, themeColor }: { password: string 
   return (
     <div>
       <div className="flex gap-2 mb-4">
-        <button onClick={() => { setMode("setup"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "setup" ? "text-white" : "bg-gray-100 dark:bg-gray-700"}`} style={mode === "setup" ? { backgroundColor: themeColor } : {}}>إنشاء</button>
-        <button onClick={() => { setMode("change"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "change" ? "text-white" : "bg-gray-100 dark:bg-gray-700"}`} style={mode === "change" ? { backgroundColor: themeColor } : {}}>تغيير</button>
-        <button onClick={() => { setMode("remove"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "remove" ? "text-white" : "bg-gray-100 dark:bg-gray-700"}`} style={mode === "remove" ? { backgroundColor: themeColor } : {}}>إلغاء</button>
+        <button onClick={() => { setMode("setup"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "setup" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}>إنشاء</button>
+        <button onClick={() => { setMode("change"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "change" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}>تغيير</button>
+        <button onClick={() => { setMode("remove"); reset(); setMessage(null); }} className={`flex-1 py-2 rounded ${mode === "remove" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"}`}>إلغاء</button>
       </div>
 
       {mode === "setup" && (
         <div className="space-y-3">
           <input type="password" placeholder="كلمة المرور" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
           <input type="password" placeholder="تأكيد كلمة المرور" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleCreate} className="w-full text-white py-2 rounded" style={{ backgroundColor: themeColor }}>حفظ</button>
+          <button onClick={handleCreate} className="w-full text-white py-2 rounded bg-blue-500">حفظ</button>
         </div>
       )}
 
@@ -315,14 +307,14 @@ const LockSettings = ({ password, setPassword, themeColor }: { password: string 
           <input type="password" placeholder="كلمة المرور الحالية" value={oldPw} onChange={(e) => setOldPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
           <input type="password" placeholder="كلمة المرور الجديدة" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
           <input type="password" placeholder="تأكيد الجديدة" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleChange} className="w-full text-white py-2 rounded" style={{ backgroundColor: themeColor }}>تغيير</button>
+          <button onClick={handleChange} className="w-full text-white py-2 rounded bg-blue-500">تغيير</button>
         </div>
       )}
 
       {mode === "remove" && (
         <div className="space-y-3">
           <input type="password" placeholder="كلمة المرور الحالية" value={oldPw} onChange={(e) => setOldPw(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-900" />
-          <button onClick={handleRemove} className="w-full text-white py-2 rounded" style={{ backgroundColor: themeColor }}>إلغاء التأمين</button>
+          <button onClick={handleRemove} className="w-full text-white py-2 rounded bg-blue-500">إلغاء التأمين</button>
         </div>
       )}
 
@@ -349,14 +341,9 @@ const SettingsModal = ({
   setMinimalView,
   reminderTone,
   setReminderTone,
-  themeColor,
-  setThemeColor,
   onOpenSecurity,
   onClose,
 }: any) => {
-  const [showColors, setShowColors] = useState(false);
-  const colorOptions = ["#3b82f6", "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#6b7280"];
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end z-50">
       <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
@@ -403,35 +390,12 @@ const SettingsModal = ({
           </select>
         </div>
 
-        {/* ألوان التطبيق */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowColors(!showColors)}
-            className="w-full py-2 rounded text-white"
-            style={{ backgroundColor: themeColor }}
-          >
-            🎨 تخصيص الألوان
-          </button>
-          {showColors && (
-            <div className="grid grid-cols-6 gap-2 mt-3">
-              {colorOptions.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => setThemeColor(color)}
-                  className={`w-8 h-8 rounded-full border-2 ${themeColor === color ? "border-black dark:border-white" : "border-transparent"}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* زر الأمان */}
-        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg mt-4" style={{ backgroundColor: themeColor }}>
+        <button onClick={onOpenSecurity} className="w-full text-white py-2 rounded-lg mt-4 bg-blue-500">
           🔒 تأمين التطبيق
         </button>
 
-        <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg" style={{ backgroundColor: themeColor }}>
+        <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">
           إغلاق
         </button>
       </div>
@@ -442,12 +406,12 @@ const SettingsModal = ({
 /* ================================
    AiModal
 ================================ */
-const AiModal = ({ onClose, themeColor }: any) => (
+const AiModal = ({ onClose }: any) => (
   <div className="fixed inset-0 bg-black/40 flex items-end z-50">
     <div className="bg-white dark:bg-gray-800 w-full p-4 rounded-t-2xl shadow-lg text-gray-900 dark:text-gray-100">
       <h2 className="text-lg font-bold mb-4">🤖 المساعد الذكي</h2>
       <p className="text-gray-600 dark:text-gray-300">هنا ستظهر ميزات المساعد الذكي لاحقًا.</p>
-      <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg" style={{ backgroundColor: themeColor }}>
+      <button onClick={onClose} className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500">
         إغلاق
       </button>
     </div>
