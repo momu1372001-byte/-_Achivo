@@ -49,16 +49,9 @@ function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // Theme Color → يغيّر الخلفية والنصوص
+  // Theme Color → يؤثر على الأزرار والعناوين
   useEffect(() => {
     document.documentElement.style.setProperty("--theme-color", themeColor);
-    document.body.style.backgroundColor = themeColor;
-
-    if (isColorDark(themeColor)) {
-      document.body.style.color = "#fff";
-    } else {
-      document.body.style.color = "#000";
-    }
   }, [themeColor]);
 
   // البيانات
@@ -200,7 +193,8 @@ function App() {
 
   return (
     <div
-      className={`min-h-screen ${fontSize === "small" ? "text-sm" : fontSize === "large" ? "text-lg" : "text-base"}`}
+      className={`min-h-screen ${fontSize === "small" ? "text-sm" : fontSize === "large" ? "text-lg" : "text-base"} bg-gray-50 dark:bg-gray-900`}
+      style={{ color: isColorDark(themeColor) ? "#fff" : "#000" }}
       dir="rtl"
     >
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
