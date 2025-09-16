@@ -68,10 +68,25 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ================================
+     🔔 تشغيل نغمة التذكيرات
+  ================================= */
+  const playReminderTone = (tone: string) => {
+    let file = "/sounds/default.mp3";
+    if (tone === "chime") file = "/sounds/chime.mp3";
+    if (tone === "beep") file = "/sounds/beep.mp3";
+
+    const audio = new Audio(file);
+    audio.play().catch(() => console.warn("⚠️ تعذّر تشغيل الصوت"));
+  };
+
   // إدارة المهام
   const handleTaskAdd = (newTask: Omit<Task, "id">) => {
     const task: Task = { ...newTask, id: Date.now().toString() };
     setTasks((prev) => [...prev, task]);
+
+    // ✅ تشغيل النغمة عند إضافة مهمة جديدة
+    playReminderTone(reminderTone);
   };
   const handleTaskUpdate = (updatedTask: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
@@ -84,6 +99,9 @@ function App() {
   const handleGoalAdd = (newGoal: Omit<Goal, "id">) => {
     const goal: Goal = { ...newGoal, id: Date.now().toString() };
     setGoals((prev) => [...prev, goal]);
+
+    // 🔔 ممكن تضيف صوت كمان عند إضافة هدف
+    playReminderTone(reminderTone);
   };
   const handleGoalUpdate = (updatedGoal: Goal) => {
     setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
