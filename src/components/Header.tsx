@@ -4,10 +4,10 @@ import { Calendar, BarChart3, Target, Clock } from "lucide-react";
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  language?: "ar" | "en"; // ✅ دعم اللغة
+  language: "ar" | "en"; // ✅ اللغة تأتي من الأعلى
 }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, language = "ar" }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, language }) => {
   // ✅ النصوص حسب اللغة
   const texts = {
     ar: {
@@ -36,7 +36,10 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
   ];
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+    <header
+      className={`bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700`}
+      dir={language === "ar" ? "rtl" : "ltr"} // ✅ اتجاه حسب اللغة
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* شعار التطبيق */}
