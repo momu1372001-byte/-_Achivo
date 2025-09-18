@@ -234,6 +234,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
                 <select value={newTask.category} onChange={(e) => setNewTask({ ...newTask, category: e.target.value })} className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100">
                   {categories.length === 0 && <option value="عام">{language === "ar" ? "عام" : "General"}</option>}
+                  {categories.length === 0 && <option value="خاص">{language === "ar" ? "خاص" : "private"}</option>}
+                  {categories.length === 0 && <option value="غير مصنف">{language === "ar" ? "غير مصنف" : "Unclassified"}</option>}
+                  
                   {categories.map((category) => (
                     <option key={category.id} value={category.name}>
                       {category.name}
