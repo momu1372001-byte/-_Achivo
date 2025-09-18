@@ -35,6 +35,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
     { id: "calendar", name: t.calendar, icon: Calendar },
     { id: "goals", name: t.goals, icon: Target },
     { id: "notes", name: t.notes, icon: Notebook },
+    { id: "draw", name: language === "ar" ? "لوحة الرسم" : "Drawing", icon: Notebook }
+
   ];
 
   return (

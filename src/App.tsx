@@ -7,6 +7,7 @@ import { Goals } from "./components/Goals";
 import { Task, Category, Goal } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
+import DrawingPad from "./components/DrawingPad";
 
 import {
   initialCategories,
@@ -18,7 +19,8 @@ import { Settings, Bot } from "lucide-react";
 
 type ActiveModal = "settings" | "security" | "ai" | null;
 //type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
-type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes";
+
+type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw";
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tabs>("dashboard");
@@ -210,7 +212,14 @@ case "dashboard":
 case "notes":
   return <Notes language={language} />;
 
-      
+  
+  
+
+
+
+  case "draw":
+    return <DrawingPad language={language} />;
+
       
        case "tasks":
         return (
