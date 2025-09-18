@@ -6,7 +6,7 @@ interface Note {
   id: string;
   title: string;
   content: string;
-  createdAt: string; // نخليها string علشان التخزين في localStorage
+  createdAt: string; // 👈 نخزن التاريخ كـ string عشان localStorage
 }
 
 interface NotesProps {
@@ -26,12 +26,14 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
   // ✅ إضافة ملاحظة جديدة
   const addNote = () => {
     if (!newTitle.trim() && !newContent.trim()) return;
+
     const newNote: Note = {
       id: Date.now().toString(),
       title: newTitle || t("بدون عنوان", "Untitled"),
       content: newContent,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(), // 👈 نخزن string
     };
+
     setNotes([...notes, newNote]);
     setNewTitle("");
     setNewContent("");
@@ -42,13 +44,6 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
     setNotes(notes.filter((n) => n.id !== id));
   };
 
-  // ✅ بدء تعديل ملاحظة
-  const startEdit = (note: Note) => {
-    setEditingId(note.id);
-    setEditTitle(note.title);
-    setEditContent(note.content);
-  };
-
   // ✅ حفظ التعديلات
   const saveEdit = (id: string) => {
     setNotes(
@@ -57,26 +52,28 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
       )
     );
     setEditingId(null);
+    setEditTitle("");
+    setEditContent("");
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h2 className="text-2xl font-bold mb-4">{t("📝 الملاحظات", "📝 Notes")}</h2>
 
-      {/* إضافة ملاحظة جديدة */}
+      {/* ✅ إضافة ملاحظة جديدة */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <input
           type="text"
           placeholder={t("عنوان الملاحظة", "Note title")}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
+          className="w-full p-2 mb-2 border rounded dark:bg-gray-900 dark:text-white"
         />
         <textarea
           placeholder={t("اكتب ملاحظتك هنا...", "Write your note here...")}
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
-          className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
+          className="w-full p-2 mb-2 border rounded dark:bg-gray-900 dark:text-white"
           rows={3}
         />
         <button
@@ -87,7 +84,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
         </button>
       </div>
 
-      {/* عرض الملاحظات */}
+      {/* ✅ عرض الملاحظات */}
       <div className="space-y-4">
         {notes.length === 0 && (
           <p className="text-gray-500">{t("لا توجد ملاحظات", "No notes yet")}</p>
@@ -104,26 +101,26 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
+                  className="w-full p-2 mb-2 border rounded dark:bg-gray-900 dark:text-white"
                 />
                 <textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
+                  className="w-full p-2 mb-2 border rounded dark:bg-gray-900 dark:text-white"
                   rows={3}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => saveEdit(note.id)}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded"
                   >
-                    <Save className="w-4 h-4" /> {t("حفظ", "Save")}
+                    <Save className="inline w-4 h-4" /> {t("حفظ", "Save")}
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="flex-1 bg-gray-400 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
+                    className="flex-1 bg-gray-400 text-white px-4 py-2 rounded"
                   >
-                    <X className="w-4 h-4" /> {t("إلغاء", "Cancel")}
+                    <X className="inline w-4 h-4" /> {t("إلغاء", "Cancel")}
                   </button>
                 </div>
               </>
@@ -141,7 +138,11 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                 </p>
                 <div className="flex gap-2 mt-3">
                   <button
-                    onClick={() => startEdit(note)}
+                    onClick={() => {
+                      setEditingId(note.id);
+                      setEditTitle(note.title);
+                      setEditContent(note.content);
+                    }}
                     className="flex-1 bg-yellow-400 text-black px-4 py-2 rounded flex items-center justify-center gap-2"
                   >
                     <Edit3 className="w-4 h-4" /> {t("تعديل", "Edit")}

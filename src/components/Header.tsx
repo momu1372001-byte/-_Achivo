@@ -1,14 +1,13 @@
 import React from "react";
-import { Calendar, BarChart3, Target, Clock } from "lucide-react";
+import { Calendar, BarChart3, Target, Clock, Notebook } from "lucide-react";
 
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  language: "ar" | "en"; // ✅ اللغة تأتي من الأعلى
+  language: "ar" | "en"; 
 }
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, language }) => {
-  // ✅ النصوص حسب اللغة
   const texts = {
     ar: {
       appName: "منظم المهام",
@@ -16,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
       tasks: "المهام",
       calendar: "التقويم",
       goals: "الأهداف",
+      notes: "الملاحظات",
     },
     en: {
       appName: "Task Organizer",
@@ -23,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
       tasks: "Tasks",
       calendar: "Calendar",
       goals: "Goals",
+      notes: "Notes",
     },
   };
 
@@ -33,24 +34,23 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
     { id: "tasks", name: t.tasks, icon: Clock },
     { id: "calendar", name: t.calendar, icon: Calendar },
     { id: "goals", name: t.goals, icon: Target },
-    { id: "notes", name: language === "ar" ? "الملاحظات" : "Notes", icon: Edit3 }
-
+    { id: "notes", name: t.notes, icon: Notebook },
   ];
 
   return (
     <header
-      className={`bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700`}
-      dir={language === "ar" ? "rtl" : "ltr"} // ✅ اتجاه حسب اللغة
+      className="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700"
+      dir={language === "ar" ? "rtl" : "ltr"}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* شعار التطبيق */}
           <div className="flex items-center space-x-2 rtl:space-x-reverse">
             <Target className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t.appName}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {t.appName}
+            </h1>
           </div>
 
-          {/* شريط التنقل */}
           <nav className="flex overflow-x-auto no-scrollbar whitespace-nowrap space-x-2 rtl:space-x-reverse">
             {tabs.map((tab) => {
               const Icon = tab.icon;

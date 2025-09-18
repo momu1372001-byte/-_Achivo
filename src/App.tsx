@@ -240,7 +240,7 @@ case "notes":
           />
         );
       default:
-        return <Dashboard tasks={tasks} goals={goals} />;
+        return <Dashboard tasks={tasks} goals={goals} language={language} />;
     }
   };
 
