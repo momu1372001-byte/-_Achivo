@@ -232,9 +232,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">
-              {t("لا توجد مهام قادمة 🎉", "No upcoming tasks 🎉")}
-            </p>
+            
+
+            
+          
           )}
         </div>
       </div>
