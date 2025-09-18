@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useEffect, useState } from "react";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
@@ -188,21 +187,25 @@ function App() {
   // التبويبات
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "dashboard":
-        return (
-          <>
-            <Dashboard tasks={tasks} goals={goals} />
-            {aiInsights && (
-              <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
-                <h2 className="font-bold mb-2 text-blue-500">
-                  🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}
-                </h2>
-                <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
-              </div>
-            )}
-          </>
-        );
-      case "tasks":
+case "dashboard":
+  return (
+    <>
+      {/* ✅ الآن Dashboard يستقبل language */}
+      <Dashboard tasks={tasks} goals={goals} language={language} />
+      {aiInsights && (
+        <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
+          <h2 className="font-bold mb-2 text-blue-500">
+            🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
+        </div>
+      )}
+    </>
+  );
+
+      
+      
+       case "tasks":
         return (
           <TaskManager
             tasks={tasks}
@@ -314,3 +317,554 @@ function App() {
 }
 
 export default App;
+
+/* ================================
+   LockScreen
+================================ */
+const LockScreen = ({
+  savedPassword,
+  onUnlock,
+}: {
+  savedPassword: string;
+  onUnlock: () => void;
+}) => {
+  const [entered, setEntered] = useState("");
+  const [error, setError] = useState("");
+
+  const handleUnlock = () => {
+    if (entered === savedPassword) {
+      setError("");
+      onUnlock();
+      setEntered("");
+    } else {
+      setError("❌ كلمة المرور غير صحيحة");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-80">
+        <h2 className="text-xl font-bold mb-4 text-center">🔒 التطبيق مقفول</h2>
+        <input
+          type="password"
+          placeholder="أدخل كلمة المرور"
+          value={entered}
+          onChange={(e) => {
+            setEntered(e.target.value);
+            setError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleUnlock();
+          }}
+          className="w-full p-2 border rounded mb-3 dark:bg-gray-900"
+        />
+        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        <button
+          onClick={handleUnlock}
+          className="w-full text-white py-2 rounded bg-blue-500"
+        >
+          فتح التطبيق
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ================================
+   LockSettings
+================================ */
+const LockSettings = ({
+  password,
+  setPassword,
+  language,
+}: {
+  password: string | null;
+  setPassword: (pw: string | null) => void;
+  language: string;
+}) => {
+  const [mode, setMode] = useState<"setup" | "change" | "remove">(
+    password ? "change" : "setup"
+  );
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [message, setMessage] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
+
+  const reset = () => {
+    setOldPw("");
+    setNewPw("");
+    setConfirmPw("");
+  };
+
+  const handleCreate = () => {
+    setMessage(null);
+    if (!newPw || newPw.length < 4) {
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short",
+      });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setMessage({
+        type: "err",
+        text:
+          language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
+      });
+      return;
+    }
+    setPassword(newPw);
+    reset();
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم إنشاء كلمة المرور" : "Password created",
+    });
+    setMode("change");
+  };
+
+  const handleChange = () => {
+    if (oldPw !== password) {
+      setMessage({
+        type: "err",
+        text:
+          language === "ar"
+            ? "❌ كلمة المرور القديمة خاطئة"
+            : "Old password incorrect",
+      });
+      return;
+    }
+    if (!newPw || newPw.length < 4) {
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "كلمة المرور قصيرة جداً" : "Password too short",
+      });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setMessage({
+        type: "err",
+        text:
+          language === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
+      });
+      return;
+    }
+    setPassword(newPw);
+    reset();
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم تغيير كلمة المرور" : "Password changed",
+    });
+  };
+
+  const handleRemove = () => {
+    if (oldPw !== password) {
+      setMessage({
+        type: "err",
+        text: language === "ar" ? "❌ كلمة المرور خاطئة" : "Password incorrect",
+      });
+      return;
+    }
+    setPassword(null);
+    reset();
+    setMode("setup");
+    setMessage({
+      type: "ok",
+      text: language === "ar" ? "✅ تم إلغاء كلمة المرور" : "Password removed",
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => {
+            setMode("setup");
+            reset();
+            setMessage(null);
+          }}
+          className={`flex-1 py-2 rounded ${
+            mode === "setup" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
+        >
+          {language === "ar" ? "إنشاء" : "Create"}
+        </button>
+        <button
+          onClick={() => {
+            setMode("change");
+            reset();
+            setMessage(null);
+          }}
+          className={`flex-1 py-2 rounded ${
+            mode === "change" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
+        >
+          {language === "ar" ? "تغيير" : "Change"}
+        </button>
+        <button
+          onClick={() => {
+            setMode("remove");
+            reset();
+            setMessage(null);
+          }}
+          className={`flex-1 py-2 rounded ${
+            mode === "remove" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700"
+          }`}
+        >
+          {language === "ar" ? "إلغاء" : "Remove"}
+        </button>
+      </div>
+
+      {mode === "setup" && (
+        <div className="space-y-3">
+          <input
+            type="password"
+            placeholder={language === "ar" ? "كلمة المرور" : "Password"}
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleCreate}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "حفظ" : "Save"}
+          </button>
+        </div>
+      )}
+
+      {mode === "change" && (
+        <div className="space-y-3">
+          <input
+            type="password"
+            placeholder={
+              language === "ar" ? "كلمة المرور الحالية" : "Current password"
+            }
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "كلمة المرور الجديدة" : "New password"}
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <input
+            type="password"
+            placeholder={language === "ar" ? "تأكيد الجديدة" : "Confirm new"}
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleChange}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "تغيير" : "Change"}
+          </button>
+        </div>
+      )}
+
+      {mode === "remove" && (
+        <div className="space-y-3">
+          <input
+            type="password"
+            placeholder={
+              language === "ar" ? "كلمة المرور الحالية" : "Current password"
+            }
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          />
+          <button
+            onClick={handleRemove}
+            className="w-full text-white py-2 rounded bg-blue-500"
+          >
+            {language === "ar" ? "إلغاء التأمين" : "Remove security"}
+          </button>
+        </div>
+      )}
+
+      {message && (
+        <p
+          className={`mt-3 text-sm ${
+            message.type === "ok" ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+};
+
+/* ================================
+   SettingsModal
+================================ */
+const SettingsModal = ({
+  darkMode,
+  setDarkMode,
+  fontSize,
+  setFontSize,
+  taskView,
+  setTaskView,
+  minimalView,
+  setMinimalView,
+  reminderTone,
+  setReminderTone,
+  categories,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+  language,
+  setLanguage,
+  onOpenSecurity,
+  onClose,
+}: any) => {
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const addCategory = () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    onAddCategory(name);
+    setNewCatName("");
+    setShowAddCat(false);
+  };
+
+  const startEdit = (id: string, name: string) => {
+    setEditingId(id);
+    setEditingName(name);
+  };
+  const saveEdit = () => {
+    if (!editingId) return;
+    onUpdateCategory(editingId, editingName);
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end z-50">
+      <div className="bg-white dark:bg-gray-800 w-full p-6 rounded-t-2xl shadow-lg max-h-[90vh] overflow-y-auto text-gray-900 dark:text-gray-100">
+        <h2 className="text-lg font-bold mb-4">
+          ⚙️ {language === "ar" ? "إعدادات التطبيق" : "App Settings"}
+        </h2>
+
+        {/* الوضع الليلي */}
+        <div className="flex items-center justify-between mb-4">
+          <span>🌙 {language === "ar" ? "الوضع الليلي" : "Dark mode"}</span>
+          <input
+            type="checkbox"
+            checked={darkMode}
+            onChange={(e: any) => setDarkMode(e.target.checked)}
+          />
+        </div>
+
+        {/* حجم الخط */}
+        <div className="mb-4">
+          <span className="block mb-2">
+            🔠 {language === "ar" ? "حجم الخط" : "Font size"}
+          </span>
+          <select
+            value={fontSize}
+            onChange={(e) => setFontSize(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
+            <option value="small">{language === "ar" ? "صغير" : "Small"}</option>
+            <option value="normal">{language === "ar" ? "عادي" : "Normal"}</option>
+            <option value="large">{language === "ar" ? "كبير" : "Large"}</option>
+          </select>
+        </div>
+
+        {/* نمط عرض المهام */}
+        <div className="mb-4">
+          <span className="block mb-2">
+            📋 {language === "ar" ? "نمط عرض المهام" : "Task view"}
+          </span>
+          <select
+            value={taskView}
+            onChange={(e) => setTaskView(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
+            <option value="list">{language === "ar" ? "قائمة" : "List"}</option>
+            <option value="grid">{language === "ar" ? "شبكة" : "Grid"}</option>
+          </select>
+        </div>
+
+        {/* عرض مختصر */}
+        <div className="flex items-center justify-between mb-4">
+          <span>🔎 {language === "ar" ? "عرض مختصر" : "Minimal view"}</span>
+          <input
+            type="checkbox"
+            checked={minimalView}
+            onChange={(e: any) => setMinimalView(e.target.checked)}
+          />
+        </div>
+
+        {/* نغمة التذكيرات */}
+        <div className="mb-4">
+          <span className="block mb-2">
+            🔔 {language === "ar" ? "نغمة التذكيرات" : "Reminder tone"}
+          </span>
+          <select
+            value={reminderTone}
+            onChange={(e) => setReminderTone(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
+            <option value="default">
+              {language === "ar" ? "افتراضية" : "Default"}
+            </option>
+            <option value="chime">Chime</option>
+            <option value="beep">Beep</option>
+          </select>
+        </div>
+
+        {/* اختيار اللغة */}
+        <div className="mb-4">
+          <span className="block mb-2">
+            🌐 {language === "ar" ? "لغة الواجهة" : "Interface language"}
+          </span>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full p-2 border rounded dark:bg-gray-900"
+          >
+            <option value="ar">العربية</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        {/* إدارة التصنيفات */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">
+              {language === "ar" ? "التصنيفات" : "Categories"}
+            </h3>
+            <button
+              onClick={() => setShowAddCat(!showAddCat)}
+              className="text-sm text-blue-600"
+            >
+              {language === "ar" ? "إضافة" : "Add"}
+            </button>
+          </div>
+
+          {showAddCat && (
+            <div className="flex gap-2 mb-2">
+              <input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                className="flex-1 p-2 border rounded dark:bg-gray-900"
+                placeholder={language === "ar" ? "اسم التصنيف" : "Category name"}
+              />
+              <button
+                onClick={addCategory}
+                className="px-3 py-2 bg-blue-600 text-white rounded"
+              >
+                {language === "ar" ? "حفظ" : "Save"}
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {categories.map((c: Category) => (
+              <div key={c.id} className="flex items-center gap-2">
+                {editingId === c.id ? (
+                  <>
+                    <input
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="flex-1 p-2 border rounded dark:bg-gray-900"
+                    />
+                    <button
+                      onClick={saveEdit}
+                      className="px-3 py-2 bg-green-600 text-white rounded"
+                    >
+                      {language === "ar" ? "حفظ" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingName("");
+                      }}
+                      className="px-3 py-2 bg-gray-200 rounded"
+                    >
+                      {language === "ar" ? "إلغاء" : "Cancel"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1">{c.name}</span>
+                    <button
+                      onClick={() => startEdit(c.id, c.name)}
+                      className="px-3 py-1 bg-yellow-200 rounded text-sm"
+                    >
+                      {language === "ar" ? "تعديل" : "Edit"}
+                    </button>
+                    <button
+                      onClick={() => onDeleteCategory(c.id)}
+                      className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+                    >
+                      {language === "ar" ? "حذف" : "Delete"}
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onOpenSecurity}
+            className="flex-1 text-white py-2 rounded-lg bg-blue-500"
+          >
+            {language === "ar" ? "🔒 تأمين التطبيق" : "🔒 App security"}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg bg-gray-500 text-white"
+          >
+            {language === "ar" ? "إغلاق" : "Close"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ================================
+   AiModal
+================================ */
+const AiModal = ({ onClose, language }: any) => (
+  <div className="fixed inset-0 bg-black/40 flex items-end z-50">
+    <div className="bg-white dark:bg-gray-800 w-full p-4 rounded-t-2xl shadow-lg text-gray-900 dark:text-gray-100">
+      <h2 className="text-lg font-bold mb-4">
+        🤖 {language === "ar" ? "المساعد الذكي" : "Smart Assistant"}
+      </h2>
+      <p className="text-gray-600 dark:text-gray-300">
+        {language === "ar"
+          ? "هنا ستظهر ميزات المساعد الذكي لاحقًا."
+          : "AI features will appear here."}
+      </p>
+      <button
+        onClick={onClose}
+        className="mt-4 w-full text-white py-2 rounded-lg bg-blue-500"
+      >
+        {language === "ar" ? "إغلاق" : "Close"}
+      </button>
+    </div>
+  </div>
+);  
