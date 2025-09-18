@@ -6,40 +6,56 @@ interface Note {
   id: string;
   title: string;
   content: string;
-  createdAt: Date;
+  createdAt: string; // نخليها string علشان التخزين في localStorage
 }
 
 interface NotesProps {
   language: string;
 }
 
-export const Notes: React.FC<NotesProps> = ({ language }) => {
+const Notes: React.FC<NotesProps> = ({ language }) => {
   const [notes, setNotes] = useLocalStorage<Note[]>("user-notes", []);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
 
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
+  // ✅ إضافة ملاحظة جديدة
   const addNote = () => {
     if (!newTitle.trim() && !newContent.trim()) return;
     const newNote: Note = {
       id: Date.now().toString(),
       title: newTitle || t("بدون عنوان", "Untitled"),
       content: newContent,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     };
     setNotes([...notes, newNote]);
     setNewTitle("");
     setNewContent("");
   };
 
+  // ✅ حذف ملاحظة
   const deleteNote = (id: string) => {
     setNotes(notes.filter((n) => n.id !== id));
   };
 
-  const saveEdit = (id: string, title: string, content: string) => {
-    setNotes(notes.map((n) => (n.id === id ? { ...n, title, content } : n)));
+  // ✅ بدء تعديل ملاحظة
+  const startEdit = (note: Note) => {
+    setEditingId(note.id);
+    setEditTitle(note.title);
+    setEditContent(note.content);
+  };
+
+  // ✅ حفظ التعديلات
+  const saveEdit = (id: string) => {
+    setNotes(
+      notes.map((n) =>
+        n.id === id ? { ...n, title: editTitle, content: editContent } : n
+      )
+    );
     setEditingId(null);
   };
 
@@ -86,28 +102,28 @@ export const Notes: React.FC<NotesProps> = ({ language }) => {
               <>
                 <input
                   type="text"
-                  defaultValue={note.title}
-                  onChange={(e) => (note.title = e.target.value)}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
                 />
                 <textarea
-                  defaultValue={note.content}
-                  onChange={(e) => (note.content = e.target.value)}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
                   className="w-full p-2 mb-2 border rounded dark:bg-gray-900"
                   rows={3}
                 />
                 <div className="flex gap-2">
                   <button
-                    onClick={() => saveEdit(note.id, note.title, note.content)}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded"
+                    onClick={() => saveEdit(note.id)}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
                   >
-                    <Save className="inline w-4 h-4" /> {t("حفظ", "Save")}
+                    <Save className="w-4 h-4" /> {t("حفظ", "Save")}
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="flex-1 bg-gray-400 text-white px-4 py-2 rounded"
+                    className="flex-1 bg-gray-400 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
                   >
-                    <X className="inline w-4 h-4" /> {t("إلغاء", "Cancel")}
+                    <X className="w-4 h-4" /> {t("إلغاء", "Cancel")}
                   </button>
                 </div>
               </>
@@ -119,15 +135,13 @@ export const Notes: React.FC<NotesProps> = ({ language }) => {
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
                   {t("أضيفت في", "Created at")}:{" "}
-                  {note.createdAt instanceof Date
-                    ? note.createdAt.toLocaleString(language === "ar" ? "ar-EG" : "en-US")
-                    : new Date(note.createdAt).toLocaleString(
-                        language === "ar" ? "ar-EG" : "en-US"
-                      )}
+                  {new Date(note.createdAt).toLocaleString(
+                    language === "ar" ? "ar-EG" : "en-US"
+                  )}
                 </p>
                 <div className="flex gap-2 mt-3">
                   <button
-                    onClick={() => setEditingId(note.id)}
+                    onClick={() => startEdit(note)}
                     className="flex-1 bg-yellow-400 text-black px-4 py-2 rounded flex items-center justify-center gap-2"
                   >
                     <Edit3 className="w-4 h-4" /> {t("تعديل", "Edit")}
