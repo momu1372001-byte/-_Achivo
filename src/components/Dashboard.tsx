@@ -217,22 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
           </ResponsiveContainer>
         </div>
 
-        {/* Upcoming Tasks */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="font-semibold mb-4">{t("المهام القادمة", "Upcoming tasks")}</h3>
-          {upcomingTasks.length > 0 && (
-            <ul className="space-y-2">
-              {upcomingTasks.map((t) => (
-                <li key={t.id} className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                  <span>{t.title}</span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {t.dueDate!.toLocaleDateString(language === "ar" ? 'ar-EG' : 'en-US')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+       
       </div>
     </div>
   );
