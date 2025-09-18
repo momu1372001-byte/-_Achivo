@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+// src/components/Dashboard.tsx
+import React, { useEffect, useMemo } from 'react';
 import {
   CheckCircle,
   Clock,
   Calendar,
   Award,
   AlertTriangle,
-  Flame,
-  Trophy,
   Bell,
 } from 'lucide-react';
 import {
@@ -25,54 +24,8 @@ import { Task, Goal } from '../types';
 interface DashboardProps {
   tasks: Task[];
   goals: Goal[];
-  language: string; // 👈 إضافة اللغة
+  language: string; // 👈 دعم اللغة
 }
-
-// 🔹 Hook للذكاء الاصطناعي
-const useAIInsights = (tasks: Task[], language: string) => {
-  const [insights, setInsights] = useState<string[]>([]);
-
-  useEffect(() => {
-    const fetchInsights = async () => {
-      try {
-        const res = await fetch("http://localhost:4000/ai-insights", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tasks }),
-        });
-        const data = await res.json();
-        setInsights(data.insights);
-      } catch (err) {
-        console.warn("⚠️ لم أستطع الاتصال بالسيرفر، هيتم استخدام اقتراحات محلية.");
-        // fallback محلي
-        const suggestions: string[] = [];
-        const overdue = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < new Date());
-        if (overdue.length > 0)
-          suggestions.push(language === "ar" ? 
-            `⚠️ لديك ${overdue.length} مهمة متأخرة! حاول إنجازها أولًا.` :
-            `⚠️ You have ${overdue.length} overdue tasks! Try finishing them first.`);
-
-        const upcoming = tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= new Date());
-        if (upcoming.length > 0)
-          suggestions.push(language === "ar" ? 
-            `⏰ استعد لمهامك القادمة: ${upcoming[0].title}` :
-            `⏰ Prepare for your upcoming task: ${upcoming[0].title}`);
-
-        const done = tasks.filter(t => t.status === 'done');
-        if (done.length > 0)
-          suggestions.push(language === "ar" ? 
-            `✅ لقد أنجزت ${done.length} مهمة! أحسنت 👍` :
-            `✅ You have completed ${done.length} tasks! Great job 👍`);
-
-        setInsights(suggestions);
-      }
-    };
-
-    if (tasks.length > 0) fetchInsights();
-  }, [tasks, language]);
-
-  return insights;
-};
 
 export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
@@ -117,40 +70,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
       .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
       .slice(0, 5);
   }, [tasks]);
-
-  // 🔹 Streaks
-  const streak = useMemo(() => {
-    let currentStreak = 0;
-    let date = new Date();
-    while (true) {
-      const dayTasks = doneTasks.filter(
-        (t) => t.dueDate && t.dueDate.toDateString() === date.toDateString()
-      );
-      if (dayTasks.length > 0) {
-        currentStreak++;
-        date.setDate(date.getDate() - 1);
-      } else break;
-    }
-    return currentStreak;
-  }, [doneTasks]);
-
-  // 🔹 Achievements
-  const achievements = [];
-  if (doneTasks.length >= 10)
-    achievements.push({
-      title: t("أنجزت 10 مهام!", "Completed 10 tasks!"),
-      icon: Trophy,
-      color: 'text-yellow-600',
-    });
-  if (streak >= 3)
-    achievements.push({
-      title: t(`🔥 سلسلة ${streak} أيام!`, `🔥 ${streak}-day streak!`),
-      icon: Flame,
-      color: 'text-red-600',
-    });
-
-  // 🔹 AI Insights
-  const aiInsights = useAIInsights(tasks, language);
 
   // ✅ إشعارات
   useEffect(() => {
@@ -297,3 +216,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
             </BarChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Upcoming Tasks */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="font-semibold mb-4">{t("المهام القادمة", "Upcoming tasks")}</h3>
+          {upcomingTasks.length > 0 ? (
+            <ul className="space-y-2">
+              {upcomingTasks.map((t) => (
+                <li key={t.id} className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <span>{t.title}</span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {t.dueDate!.toLocaleDateString(language === "ar" ? 'ar-EG' : 'en-US')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">
+              {t("لا توجد مهام قادمة 🎉", "No upcoming tasks 🎉")}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
