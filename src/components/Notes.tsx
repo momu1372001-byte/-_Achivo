@@ -147,3 +147,5 @@ export const Notes: React.FC<NotesProps> = ({ language }) => {
     </div>
   );
 };
+
+export default Notes;
