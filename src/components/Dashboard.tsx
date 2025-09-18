@@ -115,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
 
       {/* 🔹 Cards Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
+        {[ 
           {
             title: t("منجزة", "Done"),
             value: doneTasks.length,
@@ -220,7 +220,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
         {/* Upcoming Tasks */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="font-semibold mb-4">{t("المهام القادمة", "Upcoming tasks")}</h3>
-          {upcomingTasks.length > 0 ? (
+          {upcomingTasks.length > 0 && (
             <ul className="space-y-2">
               {upcomingTasks.map((t) => (
                 <li key={t.id} className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -231,11 +231,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
                 </li>
               ))}
             </ul>
-          ) : (
-            
-
-            
-          
           )}
         </div>
       </div>
