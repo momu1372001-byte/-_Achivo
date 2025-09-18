@@ -218,8 +218,10 @@ case "dashboard":
             language={language}
           />
         );
+      
       case "calendar":
-        return <Calendar tasks={tasks} />;
+        return <Calendar tasks={tasks} language={language} />;
+
       case "goals":
         return (
           <Goals
