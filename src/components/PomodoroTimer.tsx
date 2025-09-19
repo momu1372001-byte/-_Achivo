@@ -8,6 +8,9 @@ interface PomodoroProps {
 const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
+  const MIN = 1;
+  const MAX = 180;
+
   const [workMinutes, setWorkMinutes] = useState<number>(25);
   const [breakMinutes, setBreakMinutes] = useState<number>(5);
   const [workInput, setWorkInput] = useState("25");
@@ -19,7 +22,7 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // sync input with state
+  // sync inputs مع state
   useEffect(() => setWorkInput(String(workMinutes)), [workMinutes]);
   useEffect(() => setBreakInput(String(breakMinutes)), [breakMinutes]);
 
@@ -63,6 +66,8 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
       .toString()
       .padStart(2, "0")}`;
   };
+
+  const clamp = (value: number) => Math.min(MAX, Math.max(MIN, value));
 
   const progress =
     mode === "work"
@@ -134,23 +139,24 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </label>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setWorkMinutes((m) => Math.max(1, m - 1))}
+              onClick={() => setWorkMinutes((m) => clamp(m - 1))}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               -
             </button>
             <input
               type="number"
-              min={1}
+              min={MIN}
+              max={MAX}
               value={workInput}
               onChange={(e) => setWorkInput(e.target.value)}
               onBlur={() =>
-                setWorkMinutes(Math.max(1, parseInt(workInput) || 1))
+                setWorkMinutes(clamp(parseInt(workInput) || MIN))
               }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
-              onClick={() => setWorkMinutes((m) => m + 1)}
+              onClick={() => setWorkMinutes((m) => clamp(m + 1))}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               +
@@ -165,23 +171,24 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </label>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setBreakMinutes((m) => Math.max(1, m - 1))}
+              onClick={() => setBreakMinutes((m) => clamp(m - 1))}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               -
             </button>
             <input
               type="number"
-              min={1}
+              min={MIN}
+              max={MAX}
               value={breakInput}
               onChange={(e) => setBreakInput(e.target.value)}
               onBlur={() =>
-                setBreakMinutes(Math.max(1, parseInt(breakInput) || 1))
+                setBreakMinutes(clamp(parseInt(breakInput) || MIN))
               }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
-              onClick={() => setBreakMinutes((m) => m + 1)}
+              onClick={() => setBreakMinutes((m) => clamp(m + 1))}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               +
@@ -189,6 +196,11 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </div>
         </div>
       </div>
+
+      {/* حد أقصى للتوضيح */}
+      <p className="mt-4 text-xs text-gray-500">
+        {t("المدة بين 1 و 180 دقيقة", "Duration must be between 1 and 180 min")}
+      </p>
     </div>
   );
 };
