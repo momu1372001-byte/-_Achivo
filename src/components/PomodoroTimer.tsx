@@ -8,13 +8,20 @@ interface PomodoroProps {
 const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
-  const [workMinutes, setWorkMinutes] = useState(25);
-  const [breakMinutes, setBreakMinutes] = useState(5);
+  const [workMinutes, setWorkMinutes] = useState<number>(25);
+  const [breakMinutes, setBreakMinutes] = useState<number>(5);
+  const [workInput, setWorkInput] = useState("25");
+  const [breakInput, setBreakInput] = useState("5");
+
   const [secondsLeft, setSecondsLeft] = useState(workMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<"work" | "break">("work");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // sync input with state
+  useEffect(() => setWorkInput(String(workMinutes)), [workMinutes]);
+  useEffect(() => setBreakInput(String(breakMinutes)), [breakMinutes]);
 
   useEffect(() => {
     setSecondsLeft(workMinutes * 60);
@@ -84,13 +91,11 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
             cx="80"
             cy="80"
             r="70"
-            stroke={mode === "work" ? "#16a34a" : "#2563eb"} // أخضر للعمل - أزرق للاستراحة
+            stroke={mode === "work" ? "#16a34a" : "#2563eb"}
             strokeWidth="12"
             fill="transparent"
             strokeDasharray={2 * Math.PI * 70}
-            strokeDashoffset={
-              (2 * Math.PI * 70 * (100 - progress)) / 100
-            }
+            strokeDashoffset={(2 * Math.PI * 70 * (100 - progress)) / 100}
             strokeLinecap="round"
           />
         </svg>
@@ -122,7 +127,7 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
 
       {/* تخصيص الوقت */}
       <div className="grid grid-cols-2 gap-4">
-        {/* وقت العمل */}
+        {/* مدة العمل */}
         <div>
           <label className="block text-sm font-medium mb-1">
             {t("مدة العمل (دقائق)", "Work (min)")}
@@ -137,8 +142,11 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
             <input
               type="number"
               min={1}
-              value={workMinutes}
-              onChange={(e) => setWorkMinutes(Number(e.target.value))}
+              value={workInput}
+              onChange={(e) => setWorkInput(e.target.value)}
+              onBlur={() =>
+                setWorkMinutes(Math.max(1, parseInt(workInput) || 1))
+              }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
@@ -150,7 +158,7 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </div>
         </div>
 
-        {/* وقت الاستراحة */}
+        {/* مدة الاستراحة */}
         <div>
           <label className="block text-sm font-medium mb-1">
             {t("مدة الاستراحة (دقائق)", "Break (min)")}
@@ -165,8 +173,11 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
             <input
               type="number"
               min={1}
-              value={breakMinutes}
-              onChange={(e) => setBreakMinutes(Number(e.target.value))}
+              value={breakInput}
+              onChange={(e) => setBreakInput(e.target.value)}
+              onBlur={() =>
+                setBreakMinutes(Math.max(1, parseInt(breakInput) || 1))
+              }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
