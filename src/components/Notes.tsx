@@ -136,29 +136,29 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                     language === "ar" ? "ar-EG" : "en-US"
                   )}
                 </p>
-                <div className="flex gap-2 mt-3 justify-start">
+
+           
+                
+   <div className="flex gap-2 mt-3 justify-start">
   <button
     onClick={() => {
       setEditingId(note.id);
       setEditTitle(note.title);
       setEditContent(note.content);
     }}
-    className="p-1 text-gray-600 hover:text-yellow-500 transition"
+    className="p-1 text-yellow-500 hover:scale-110 transition-transform"
   >
     <Edit3 className="w-4 h-4" />
   </button>
 
   <button
     onClick={() => deleteNote(note.id)}
-    className="p-1 text-gray-600 hover:text-red-600 transition"
+    className="p-1 text-red-600 hover:scale-110 transition-transform"
   >
     <Trash2 className="w-4 h-4" />
   </button>
 </div>
-
-                
-                
-                
+             
                 
                 
                 
