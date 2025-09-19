@@ -139,7 +139,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
 
            
                 
-   <div className="flex gap-2 mt-3 justify-start">
+   <div className="flex gap-2 mt-3 justify-end">
   <button
     onClick={() => {
       setEditingId(note.id);
