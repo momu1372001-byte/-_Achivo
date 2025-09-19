@@ -32,15 +32,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
   const t = language === "ar" ? texts.ar : texts.en;
 
   const tabs = [
-    { id: "dashboard", name: t.dashboard, icon: BarChart3 },
-    { id: "tasks", name: t.tasks, icon: Clock },
-    { id: "calendar", name: t.calendar, icon: Calendar },
-    { id: "goals", name: t.goals, icon: Target },
-    { id: "notes", name: t.notes, icon: Notebook },
-    { id: "draw", name: language === "ar" ? "لوحة الرسم" : "Drawing", icon: Pencil,Edit3 }
-    { id: "pomodoro", name: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
+  { id: "dashboard", name: t.dashboard, icon: BarChart3 },
+  { id: "tasks", name: t.tasks, icon: Clock },
+  { id: "calendar", name: t.calendar, icon: Calendar },
+  { id: "goals", name: t.goals, icon: Target },
+  { id: "notes", name: t.notes, icon: Notebook },
+  { id: "draw", name: language === "ar" ? "لوحة الرسم" : "Drawing", icon: Pencil },
+  { id: "pomodoro", name: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer }
+];
 
-  ];
 
   return (
     <header
