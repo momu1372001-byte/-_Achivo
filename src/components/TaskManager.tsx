@@ -502,7 +502,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 type="date"
                 value={dateToInput(taskBeingEdited.dueDate)}
                 onChange={(e) =>
-                  setTaskBeingEdited((prev) => (prev ? { ...prev, dueDate: e.target.value ? e.target.value : undefined } : prev))
+                  
+                  
+                  setTaskBeingEdited((prev) => (prev ? { ...prev, dueDate: e.target.value ? new Date(e.target.value ): undefined } : prev))
                 }
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
               />
