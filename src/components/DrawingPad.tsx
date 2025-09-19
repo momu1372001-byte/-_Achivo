@@ -25,6 +25,13 @@ const DrawingPad: React.FC<Props> = ({ language = "ar" }) => {
     const parent = canvas.parentElement!;
     const ratio = window.devicePixelRatio || 1;
 
+
+
+
+
+    
+
+
     const fit = () => {
       const w = parent.clientWidth;
       const h = Math.max(300, window.innerHeight * 0.5);
