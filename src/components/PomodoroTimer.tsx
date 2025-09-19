@@ -122,29 +122,60 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
 
       {/* تخصيص الوقت */}
       <div className="grid grid-cols-2 gap-4">
+        {/* وقت العمل */}
         <div>
           <label className="block text-sm font-medium mb-1">
             {t("مدة العمل (دقائق)", "Work (min)")}
           </label>
-          <input
-            type="number"
-            min={1}
-            value={workMinutes}
-            onChange={(e) => setWorkMinutes(Number(e.target.value))}
-            className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100"
-          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWorkMinutes((m) => Math.max(1, m - 1))}
+              className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={workMinutes}
+              onChange={(e) => setWorkMinutes(Number(e.target.value))}
+              className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
+            />
+            <button
+              onClick={() => setWorkMinutes((m) => m + 1)}
+              className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+            >
+              +
+            </button>
+          </div>
         </div>
+
+        {/* وقت الاستراحة */}
         <div>
           <label className="block text-sm font-medium mb-1">
             {t("مدة الاستراحة (دقائق)", "Break (min)")}
           </label>
-          <input
-            type="number"
-            min={1}
-            value={breakMinutes}
-            onChange={(e) => setBreakMinutes(Number(e.target.value))}
-            className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100"
-          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBreakMinutes((m) => Math.max(1, m - 1))}
+              className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={breakMinutes}
+              onChange={(e) => setBreakMinutes(Number(e.target.value))}
+              className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
+            />
+            <button
+              onClick={() => setBreakMinutes((m) => m + 1)}
+              className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
     </div>
