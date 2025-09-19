@@ -8,6 +8,7 @@ import { Task, Category, Goal } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
 import DrawingPad from "./components/DrawingPad";
+import PomodoroTimer from "./components/PomodoroTimer";
 
 import {
   initialCategories,
@@ -20,7 +21,9 @@ import { Settings, Bot } from "lucide-react";
 type ActiveModal = "settings" | "security" | "ai" | null;
 //type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
 
-type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw";
+//type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw";
+type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw" | "pomodoro";
+
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tabs>("dashboard");
@@ -214,6 +217,8 @@ case "notes":
 
   
   
+case "pomodoro":
+  return <PomodoroTimer language={language} />;
 
 
 

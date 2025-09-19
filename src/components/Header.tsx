@@ -1,6 +1,7 @@
 import React from "react";
 //import { Calendar, BarChart3, Target, Clock, Notebook } from "lucide-react";
-import { Calendar, BarChart3, Target, Clock, Edit3, Pencil,Notebook } from "lucide-react";
+//import { Calendar, BarChart3, Target, Clock, Edit3, Pencil,Notebook } from "lucide-react";
+import { Calendar, BarChart3, Target, Clock, Edit3, Pencil, Notebook, Timer } from "lucide-react";
 
 interface HeaderProps {
   activeTab: string;
@@ -37,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, languag
     { id: "goals", name: t.goals, icon: Target },
     { id: "notes", name: t.notes, icon: Notebook },
     { id: "draw", name: language === "ar" ? "لوحة الرسم" : "Drawing", icon: Pencil,Edit3 }
+    { id: "pomodoro", name: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
 
   ];
 
