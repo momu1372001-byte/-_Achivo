@@ -9,12 +9,13 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
   const MIN = 1;
-  const MAX = 180;
 
   const [workMinutes, setWorkMinutes] = useState<number>(25);
   const [breakMinutes, setBreakMinutes] = useState<number>(5);
   const [workInput, setWorkInput] = useState("25");
   const [breakInput, setBreakInput] = useState("5");
+
+  const [error, setError] = useState<string | null>(null);
 
   const [secondsLeft, setSecondsLeft] = useState(workMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -67,7 +68,30 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
       .padStart(2, "0")}`;
   };
 
-  const clamp = (value: number) => Math.min(MAX, Math.max(MIN, value));
+  const validateInput = (
+    value: string,
+    setMinutes: (n: number) => void,
+    setInput: (s: string) => void
+  ) => {
+    const num = parseInt(value);
+    if (isNaN(num)) {
+      setError(t("❌ الرجاء إدخال رقم صحيح", "❌ Please enter a valid number"));
+      setInput("1");
+      setMinutes(MIN);
+      return;
+    }
+    if (num < MIN) {
+      setError(
+        t("❌ لا يمكن أن تكون المدة أقل من دقيقة", "❌ Duration cannot be less than 1 minute")
+      );
+      setInput(String(MIN));
+      setMinutes(MIN);
+    } else {
+      setError(null);
+      setInput(String(num));
+      setMinutes(num);
+    }
+  };
 
   const progress =
     mode === "work"
@@ -139,24 +163,24 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </label>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setWorkMinutes((m) => clamp(m - 1))}
+              onClick={() =>
+                setWorkMinutes((m) => Math.max(MIN, m - 1))
+              }
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               -
             </button>
             <input
               type="number"
-              min={MIN}
-              max={MAX}
               value={workInput}
               onChange={(e) => setWorkInput(e.target.value)}
               onBlur={() =>
-                setWorkMinutes(clamp(parseInt(workInput) || MIN))
+                validateInput(workInput, setWorkMinutes, setWorkInput)
               }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
-              onClick={() => setWorkMinutes((m) => clamp(m + 1))}
+              onClick={() => setWorkMinutes((m) => m + 1)}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               +
@@ -171,24 +195,24 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
           </label>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setBreakMinutes((m) => clamp(m - 1))}
+              onClick={() =>
+                setBreakMinutes((m) => Math.max(MIN, m - 1))
+              }
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               -
             </button>
             <input
               type="number"
-              min={MIN}
-              max={MAX}
               value={breakInput}
               onChange={(e) => setBreakInput(e.target.value)}
               onBlur={() =>
-                setBreakMinutes(clamp(parseInt(breakInput) || MIN))
+                validateInput(breakInput, setBreakMinutes, setBreakInput)
               }
               className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:text-gray-100 text-center"
             />
             <button
-              onClick={() => setBreakMinutes((m) => clamp(m + 1))}
+              onClick={() => setBreakMinutes((m) => m + 1)}
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
             >
               +
@@ -197,10 +221,8 @@ const PomodoroTimer: React.FC<PomodoroProps> = ({ language = "ar" }) => {
         </div>
       </div>
 
-      {/* حد أقصى للتوضيح */}
-      <p className="mt-4 text-xs text-gray-500">
-        {t("المدة بين 1 و 180 دقيقة", "Duration must be between 1 and 180 min")}
-      </p>
+      {/* رسالة الخطأ */}
+      {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}
     </div>
   );
 };
