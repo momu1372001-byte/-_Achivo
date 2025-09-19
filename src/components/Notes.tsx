@@ -136,25 +136,34 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                     language === "ar" ? "ar-EG" : "en-US"
                   )}
                 </p>
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => {
-                      setEditingId(note.id);
-                      setEditTitle(note.title);
-                      setEditContent(note.content);
-                    }}
-                    className="flex-1 bg-yellow-400 text-black px-4 py-2 rounded flex items-center justify-center gap-2"
-                  >
-                    <Edit3 className="w-4 h-4" /> 
-                  </button>
-                  <button
-                    onClick={() => deleteNote(note.id)}
-                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" /> {t( "حذف","Delete")}
-                  
-                  </button>
-                </div>
+                <div className="flex gap-2 mt-3 justify-start">
+  <button
+    onClick={() => {
+      setEditingId(note.id);
+      setEditTitle(note.title);
+      setEditContent(note.content);
+    }}
+    className="p-1 text-gray-600 hover:text-yellow-500 transition"
+  >
+    <Edit3 className="w-4 h-4" />
+  </button>
+
+  <button
+    onClick={() => deleteNote(note.id)}
+    className="p-1 text-gray-600 hover:text-red-600 transition"
+  >
+    <Trash2 className="w-4 h-4" />
+  </button>
+</div>
+
+                
+                
+                
+                
+                
+                
+                
+                
               </>
             )}
           </div>
