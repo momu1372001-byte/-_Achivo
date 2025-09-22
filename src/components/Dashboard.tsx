@@ -79,7 +79,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) 
 
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(language === "ar" ? '🎉 مرحباً بك!' : "🎉 Welcome!", {
-        body: language === "ar" ? "ابدأ يومك بإنجاز المهام 👌" : "Start your day by completing tasks 👌",
+        body: language === "ar" ? "ابدأ يومك بإنجاز المهام ااااااااااااا👌" : "Start your day by completing tasks 👌",
         icon: '/icons/icon-192.png',
       });
 
