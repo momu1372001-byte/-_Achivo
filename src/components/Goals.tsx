@@ -258,7 +258,13 @@ export const Goals: React.FC<GoalsProps> = ({
   const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : "");
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6" dir={dir}>
+     <div
+  className="max-w-4xl mx-auto px-4 py-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 leading-relaxed"
+  dir={dir}
+>
+
+
+     
       {/* header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
