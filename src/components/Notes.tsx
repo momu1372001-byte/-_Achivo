@@ -64,7 +64,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <input
           type="text"
-          placeholder={t("عنوان الملاحظة", "Note title")}
+          placeholder={t("عنوانااا الملاحظة", "Note title")}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           className="w-full p-2 mb-2 border rounded dark:bg-gray-900 dark:text-white"
