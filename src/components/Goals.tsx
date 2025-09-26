@@ -1,5 +1,5 @@
 // src/components/Goals.tsx
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Target,
   Plus,
@@ -13,6 +13,12 @@ import {
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { Goal, Task, Milestone } from "../types";
+
+/**
+ * ملاحظات عن types:
+ * - Task قد يحتوي على حقل اختياري goalId?: string لتسهيل الربط المباشر.
+ * - Goal يحتوي على id, title, target, type, category, horizon, priority, deadline, milestones, updatedAt, current
+ */
 
 interface GoalsProps {
   goals: Goal[];
@@ -67,6 +73,8 @@ const translations = {
     saved: "تم حفظ الهدف بنجاح!",
     updated: "تم تحديث الهدف بنجاح!",
     deleted: "تم حذف الهدف!",
+    resetFilters: "إعادة ضبط الفلاتر",
+    applyFilters: "تطبيق",
   },
   en: {
     all: "All",
@@ -97,6 +105,8 @@ const translations = {
     saved: "Goal saved successfully!",
     updated: "Goal updated successfully!",
     deleted: "Goal deleted!",
+    resetFilters: "Reset filters",
+    applyFilters: "Apply",
   },
 } as const;
 
@@ -113,7 +123,7 @@ export const Goals: React.FC<GoalsProps> = ({
 
   const defaultCategory = language === "ar" ? "عام" : "General";
 
-  // UI state
+  // --- UI state ---
   type Tab = "all" | "short" | "long";
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
@@ -125,8 +135,28 @@ export const Goals: React.FC<GoalsProps> = ({
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null); // collapse/expand tasks
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
+  // --- local goals state (fallback if parent doesn't control) ---
+  const [localGoals, setLocalGoals] = useState<Goal[]>(goals || []);
+  useEffect(() => {
+    setLocalGoals(goals || []);
+  }, [goals]);
+
+  // filter popover state (fixed issue: filter icon wasn't doing anything)
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!filterRef.current) return;
+      if (!(e.target instanceof Node)) return;
+      if (!filterRef.current.contains(e.target)) setFilterOpen(false);
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  // form state
   const emptyForm: FormState = {
     title: "",
     target: 5,
@@ -138,7 +168,7 @@ export const Goals: React.FC<GoalsProps> = ({
   };
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  // compute tasks-for-each-goal map once (avoid double work)
+  // --- tasksByGoal: compute mapping using direct goalId if present, otherwise fallback to category+dates+completed ---
   const tasksByGoal = useMemo(() => {
     const map = new Map<string, Task[]>();
     const now = new Date();
@@ -149,15 +179,23 @@ export const Goals: React.FC<GoalsProps> = ({
 
     const getDayOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+    const normalize = (s?: string) => (s || defaultCategory).trim().toLowerCase();
+
     const tasksFor = (goal: Goal) => {
-      if (!goal) return [] as Task[];
+      // prefer explicit linking by goalId on the Task
+      const byGoalId = tasks.filter((task) => (task as any).goalId && (task as any).goalId === goal.id);
+      if (byGoalId.length > 0) {
+        return byGoalId.filter((t) => !!t.completed);
+      }
+
+      // fallback: category + date window + completed
       if (goal.type === "daily") {
         return tasks.filter((task) => {
           const d = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
           const day = getDayOnly(d);
           return (
             day.getTime() === todayStart.getTime() &&
-            (task.category || defaultCategory) === (goal.category || defaultCategory) &&
+            normalize(task.category) === normalize(goal.category) &&
             !!task.completed
           );
         });
@@ -166,30 +204,31 @@ export const Goals: React.FC<GoalsProps> = ({
           const d = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
           return (
             d >= startOfWeek &&
-            (task.category || defaultCategory) === (goal.category || defaultCategory) &&
+            normalize(task.category) === normalize(goal.category) &&
             !!task.completed
           );
         });
       }
     };
 
-    goals.forEach((g) => {
+    localGoals.forEach((g) => {
       map.set(g.id, tasksFor(g));
     });
+
     return map;
-  }, [goals, tasks, defaultCategory]);
+  }, [tasks, localGoals, defaultCategory]);
 
   // category suggestions
   const categorySuggestions = useMemo(() => {
     const s = new Set<string>();
-    goals.forEach((g) => s.add(g.category || defaultCategory));
+    localGoals.forEach((g) => s.add(g.category || defaultCategory));
     tasks.forEach((t) => s.add(t.category || defaultCategory));
     return Array.from(s);
-  }, [goals, tasks, defaultCategory]);
+  }, [localGoals, tasks, defaultCategory]);
 
-  // prepare displayed goals with progress (uses tasksByGoal to avoid recompute)
+  // prepare displayed goals with progress (use localGoals)
   const displayedGoals = useMemo(() => {
-    let list = goals.slice();
+    let list = localGoals.slice();
 
     // tab
     if (tab === "short") list = list.filter((g) => (g.horizon || "short") === "short");
@@ -209,7 +248,7 @@ export const Goals: React.FC<GoalsProps> = ({
     if (categoryFilter) list = list.filter((g) => g.category === categoryFilter);
     if (priorityFilter) list = list.filter((g) => (g.priority || "medium") === priorityFilter);
 
-    // attach progress
+    // attach progress using tasksByGoal
     const withProgress = list.map((g) => {
       const current = (tasksByGoal.get(g.id) || []).length;
       const progress = Math.min(Math.round((current / (g.target || 1)) * 100), 100);
@@ -228,16 +267,15 @@ export const Goals: React.FC<GoalsProps> = ({
     }
 
     return withProgress;
-  }, [goals, tab, query, categoryFilter, priorityFilter, sortBy, tasksByGoal]);
+  }, [localGoals, tab, query, categoryFilter, priorityFilter, sortBy, tasksByGoal]);
 
-  // open add
+  // --- form actions ---
   const openAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
     setShowModal(true);
   };
 
-  // open edit
   const openEdit = (g: Goal) => {
     setEditingId(g.id);
     setForm({
@@ -253,7 +291,32 @@ export const Goals: React.FC<GoalsProps> = ({
     setShowModal(true);
   };
 
-  // validate and save
+  const persistAdd = (payload: Omit<Goal, "id">) => {
+    // create temporary id for local state
+    const id = Date.now().toString();
+    const newGoal: Goal = { id, ...payload } as Goal;
+    // call parent if provided
+    try {
+      onGoalAdd && onGoalAdd(payload);
+    } catch (e) {
+      // ignore
+    }
+    // always update local view optimistically
+    setLocalGoals((prev) => [newGoal, ...prev]);
+    toast.success(t("saved"));
+  };
+
+  const persistUpdate = (id: string, payload: Omit<Goal, "id"> & Partial<Pick<Goal, "id">>) => {
+    const updated: Goal = { id, ...(payload as any) } as Goal;
+    try {
+      onGoalUpdate && onGoalUpdate(updated);
+    } catch (e) {
+      // ignore
+    }
+    setLocalGoals((prev) => prev.map((g) => (g.id === id ? updated : g)));
+    toast.success(t("updated"));
+  };
+
   const handleSave = () => {
     const titleOk = !!form.title.trim();
     const targetOk = Number.isInteger(form.target) && form.target >= 1;
@@ -266,11 +329,9 @@ export const Goals: React.FC<GoalsProps> = ({
       return;
     }
 
-    // payload respects original shape (omit id when adding)
     const payload: Omit<Goal, "id"> = {
       title: form.title.trim(),
       target: form.target,
-      // keep current 0 for new/updated here — backend or parent may recalc
       current: 0,
       type: form.type,
       category: form.category,
@@ -282,21 +343,27 @@ export const Goals: React.FC<GoalsProps> = ({
     } as any;
 
     if (editingId) {
-      onGoalUpdate({ id: editingId, ...(payload as Goal) } as Goal);
-      toast.success(t("updated"));
+      persistUpdate(editingId, payload);
     } else {
-      onGoalAdd(payload);
-      toast.success(t("saved"));
+      persistAdd(payload);
     }
 
     setShowModal(false);
     setEditingId(null);
+    setForm(emptyForm);
   };
 
   const handleDelete = (id: string) => {
-    if (!onGoalDelete) return;
     if (confirm(language === "ar" ? "هل تريد حذف هذا الهدف؟" : "Delete this goal?")) {
-      onGoalDelete(id);
+      if (onGoalDelete) {
+        try {
+          onGoalDelete(id);
+        } catch (e) {
+          // ignore parent error
+        }
+      }
+      // ensure local removal so UI updates even without parent callback
+      setLocalGoals((prev) => prev.filter((g) => g.id !== id));
       toast.success(t("deleted"));
     }
   };
@@ -310,29 +377,34 @@ export const Goals: React.FC<GoalsProps> = ({
 
   const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : "");
 
-  // Milestone helpers inside modal:
+  // Milestone helpers inside modal
   const addMilestoneToForm = (title: string) => {
     if (!title.trim()) return;
     const newM: Milestone = { id: Date.now().toString(), title: title.trim(), completed: false };
     setForm((prev) => ({ ...prev, milestones: [...prev.milestones, newM] }));
   };
-
   const toggleMilestoneInForm = (id: string) => {
     setForm((prev) => ({
       ...prev,
       milestones: prev.milestones.map((m) => (m.id === id ? { ...m, completed: !m.completed } : m)),
     }));
   };
-
   const updateMilestoneTitleInForm = (id: string, title: string) => {
     setForm((prev) => ({
       ...prev,
       milestones: prev.milestones.map((m) => (m.id === id ? { ...m, title } : m)),
     }));
   };
-
   const removeMilestoneFromForm = (id: string) => {
     setForm((prev) => ({ ...prev, milestones: prev.milestones.filter((m) => m.id !== id) }));
+  };
+
+  // small helper reset filters
+  const resetFilters = () => {
+    setQuery("");
+    setCategoryFilter("");
+    setPriorityFilter("");
+    setSortBy("progress");
   };
 
   return (
@@ -399,7 +471,7 @@ export const Goals: React.FC<GoalsProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="p-2 border rounded bg-white dark:bg-gray-800">
             <option value="progress">{language === "ar" ? "الأكثر تقدمًا" : "Top progress"}</option>
             <option value="newest">{language === "ar" ? "الأحدث" : "Newest"}</option>
@@ -423,18 +495,60 @@ export const Goals: React.FC<GoalsProps> = ({
             <option value="low">{t("priorityLow")}</option>
           </select>
 
+          {/* Filter icon now toggles a small popover to control filters (fix for non-working icon) */}
+          <div ref={filterRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setFilterOpen((s) => !s)}
+              className="p-2 border rounded bg-white dark:bg-gray-800"
+              title={t("viewTasks")}
+              aria-expanded={filterOpen}
+            >
+              <Filter className="w-4 h-4" />
+            </button>
+
+            {filterOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border rounded p-3 shadow z-50">
+                <div className="text-sm mb-2 font-medium">{language === "ar" ? "الفلاتر" : "Filters"}</div>
+
+                <div className="mb-2">
+                  <label className="text-xs block mb-1">{t("categoryLabel")}</label>
+                  <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full p-1 border rounded bg-white dark:bg-gray-700 text-sm">
+                    <option value="">{t("categoryLabel")}</option>
+                    {categorySuggestions.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div className="mb-2">
+                  <label className="text-xs block mb-1">{t("priorityLabel")}</label>
+                  <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full p-1 border rounded bg-white dark:bg-gray-700 text-sm">
+                    <option value="">{t("priorityLabel")}</option>
+                    <option value="high">{t("priorityHigh")}</option>
+                    <option value="medium">{t("priorityMed")}</option>
+                    <option value="low">{t("priorityLow")}</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-between mt-3">
+                  <button onClick={() => { resetFilters(); setFilterOpen(false); }} className="text-sm px-2 py-1 rounded border">
+                    {t("resetFilters")}
+                  </button>
+                  <button onClick={() => setFilterOpen(false)} className="text-sm px-2 py-1 rounded bg-blue-600 text-white">
+                    {t("applyFilters")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* helper reset (same as before) */}
           <button
             type="button"
-            onClick={() => {
-              setQuery("");
-              setCategoryFilter("");
-              setPriorityFilter("");
-              setSortBy("progress");
-            }}
+            onClick={() => resetFilters()}
             className="p-2 border rounded bg-white dark:bg-gray-800"
             title={t("viewTasks")}
           >
-            <Filter className="w-4 h-4" />
+            <List className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -505,11 +619,9 @@ export const Goals: React.FC<GoalsProps> = ({
                       <button onClick={() => openEdit(goal)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title={language === "ar" ? "تعديل" : "Edit"}>
                         <Edit className="w-4 h-4" />
                       </button>
-                      {onGoalDelete && (
-                        <button onClick={() => handleDelete(goal.id)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600" title={t("delete")}>
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button onClick={() => handleDelete(goal.id)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600" title={t("delete")}>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                       <button onClick={() => toggleExpand(goal.id)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title={t("viewTasks")}>
                         <List className="w-4 h-4" />
                       </button>
@@ -557,7 +669,15 @@ export const Goals: React.FC<GoalsProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{editingId ? t("editGoal") : t("addGoal")}</h3>
-              <button onClick={() => { setShowModal(false); setEditingId(null); setForm(emptyForm); }} aria-label={t("cancel")} className="p-1">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingId(null);
+                  setForm(emptyForm);
+                }}
+                aria-label={t("cancel")}
+                className="p-1"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -645,7 +765,7 @@ export const Goals: React.FC<GoalsProps> = ({
             <div className="mt-4 flex items-center gap-2">
               <button onClick={handleSave} className="bg-blue-600 text-white px-4 py-2 rounded">{t("save")}</button>
               <button onClick={() => { setShowModal(false); setEditingId(null); setForm(emptyForm); }} className="px-4 py-2 rounded border">{t("cancel")}</button>
-              {editingId && onGoalDelete && (
+              {editingId && (
                 <button onClick={() => handleDelete(editingId)} className="ml-auto text-red-600 px-3 py-2 rounded border">
                   {t("delete")}
                 </button>
