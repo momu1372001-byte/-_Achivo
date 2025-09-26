@@ -12,7 +12,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, language }) => {
   const texts = {
     ar: {
-      appName: "منظم المهام",
+      appName: " ننننننننننننمنظم المهام",
       dashboard: "لوحة التحكم",
       tasks: "المهام",
       calendar: "التقويم",
