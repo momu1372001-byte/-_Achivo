@@ -3,7 +3,8 @@ import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { TaskManager } from "./components/TaskManager";
 import { Calendar } from "./components/Calendar";
-import { Goals } from "./components/Goals";
+import Goals from "./components/Goals";
+
 import { Task, Category, Goal } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
