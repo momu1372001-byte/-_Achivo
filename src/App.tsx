@@ -151,6 +151,13 @@ function App() {
     setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
   };
 
+const handleGoalDelete = (goalId: string) => {
+  setGoals(prev => prev.filter(g => g.id !== goalId));
+};
+
+
+
+
   // ===========================
   // إدارة التصنيفات
   // ===========================
@@ -246,13 +253,16 @@ case "pomodoro":
 
       case "goals":
         return (
-          <Goals
-            goals={goals}
-            tasks={tasks}
-            onGoalAdd={handleGoalAdd}
-            onGoalUpdate={handleGoalUpdate}
-            language={language}
-          />
+         <Goals
+        goals={goals}
+        tasks={tasks}
+        onGoalAdd={handleGoalAdd}
+        onGoalUpdate={handleGoalUpdate}
+        onGoalDelete={handleGoalDelete}   // ✅ أضف هذا
+        language={language as "ar" | "en"} 
+/>
+
+       
         );
       default:
         return <Dashboard tasks={tasks} goals={goals} language={language} />;

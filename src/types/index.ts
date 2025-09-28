@@ -7,18 +7,19 @@ export interface Task {
   description?: string;
   status: 'todo' | 'in-progress' | 'done'; // الحالة بدل completed
   priority: 'low' | 'medium' | 'high';
-  category: string;
+  category?: string;        // ← خليتها اختيارية للتوافق
   dueDate?: Date;
   createdAt: Date;
   timeSpent: number; // بالدقائق
+  goalId?: string;   // ← ربط المهمة بهدف (اختياري)
 }
 
 // ✅ تعريف الفئات (Categories)
 export interface Category {
   id: string;
   name: string;
-  color: string;
-  icon: string;
+  color?: string;
+  icon?: string;
 }
 
 // ✅ تعريف الـ Milestones للأهداف الكبيرة
@@ -32,17 +33,15 @@ export interface Milestone {
 export interface Goal {
   id: string;
   title: string;
-  target: number;
-  current: number;
-  type: 'daily' | 'weekly' | 'monthly';
-  category: string;
-  horizon?: 'short' | 'long';
-  priority?: 'low' | 'medium' | 'high';
-  deadline?: string; // تاريخ بصيغة ISO (مثال: "2025-12-31")
+  purpose?: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  notifyTime?: string; // "HH:MM"
+  completedDays?: string[];
   milestones?: Milestone[];
-  tasks?: Task[];        // ✅ إضافة المهام المرتبطة بالهدف
   updatedAt?: number;
 }
+
 
 // ✅ تعريف جلسات الوقت (Time Tracking)
 export interface TimeSession {
