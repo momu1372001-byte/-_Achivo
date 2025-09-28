@@ -40,6 +40,7 @@ export interface Goal {
   priority?: 'low' | 'medium' | 'high';
   deadline?: string; // تاريخ بصيغة ISO (مثال: "2025-12-31")
   milestones?: Milestone[];
+  tasks?: Task[];        // ✅ إضافة المهام المرتبطة بالهدف
   updatedAt?: number;
 }
 
