@@ -42,7 +42,7 @@ const tr = {
     cancel: "إلغاء",
     delete: "حذف",
     markToday: "وضع علامة اليوم",
-    alreadyMarked: "لقد سجّلت إنجاز اليوم بالفعل",
+    alreadyMarked: "  لقد سجّلت إنجاز اليوم بالفعل",
     noGoals: "لا توجد أهداف بعد",
     testNotify: "جرّب التنبيه",
     deleteConfirm: "هل تريد حذف هذا الهدف؟",
