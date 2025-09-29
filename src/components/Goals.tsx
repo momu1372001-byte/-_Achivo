@@ -306,6 +306,10 @@ export default function Goals(props: Props) {
         <div className="p-6 text-center rounded border bg-gray-50 dark:bg-gray-800 text-gray-500">{t("noGoals")}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          
+          
+          
           {list.map((g) => {
             const progress = (g as any).__progress as number;
             const completed = progress >= 100;
@@ -339,91 +343,118 @@ export default function Goals(props: Props) {
                       )}
                     </div>
 
-                    {/* progress bar */}
-                    <div className="mt-3">
-                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
-                        <div style={{ width: `${progress}%` }} className={`h-2 ${progress >= 100 ? "bg-green-400" : "bg-blue-500"}`} />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{progress}%</div>
-                    </div>
-                  </div>
 
-                  {/* buttons column; each button is relative so toast can appear beside it */}
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => markToday(g)}
-                        title={t("markToday")}
-                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600"
-                      >
-                        <CheckCircle className="w-5 h-5" />
-                      </button>
 
-                      {/* inline toast for this goal (appears to the right of the button) */}
-                      {toast && toast.goalId === g.id && (
-                        <div
-                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-xs shadow ${
-                            toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"
-                          }`}
-                        >
-                          {toast.text}
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(g)}
-                        title={language === "ar" ? "تعديل" : "Edit"}
-                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                    </div>
 
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteId(g.id)}
-                        title={t("delete")}
-                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
 
-                    {g.notifyTime && (
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => testNotifyNow(g)}
-                          title={t("testNotify")}
-                          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600"
-                        >
-                          <Bell className="w-5 h-5" />
-                        </button>
 
-                        {/* show same inline toast if active for this goal (e.g. notification denied/not supported) */}
-                        {toast && toast.goalId === g.id && (
-                          <div
-                            className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-xs shadow ${
-                              toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"
-                            }`}
-                          >
-                            {toast.text}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </header>
-              </article>
-            );
-          })}
+
+
+```tsx
+{/* progress bar */}
+<div className="mt-3">
+  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+    <div
+      style={{ width: `${progress}%` }}
+      className={`h-2 ${progress >= 100 ? "bg-green-400" : "bg-blue-500"}`}
+    />
+  </div>
+  <div className="text-xs text-gray-500 mt-1">{progress}%</div>
+</div>
+</div>
+
+{/* buttons column; each button is relative so toast can appear beside it */}
+<div className="flex flex-col items-center gap-2">
+  <div className="relative">
+    <button
+      type="button"
+      onClick={() => markToday(g)}
+      title={t("markToday")}
+      className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600"
+    >
+      <CheckCircle className="w-5 h-5" />
+    </button>
+
+    {/* inline toast for this goal (appears to the right of the button) */}
+    {toast && toast.goalId === g.id && (
+      <div
+        className={`absolute left-full ml-1 top-1/2 -translate-y-1/2 
+          px-2 py-0.5 rounded text-[10px] shadow whitespace-nowrap
+          ${
+            toast.kind === "success"
+              ? "bg-green-600 text-white"
+              : toast.kind === "warn"
+              ? "bg-yellow-400 text-black"
+              : "bg-blue-600 text-white"
+          }`}
+      >
+        {toast.text}
+      </div>
+    )}
+  </div>
+
+  <div className="relative">
+    <button
+      type="button"
+      onClick={() => openEdit(g)}
+      title={language === "ar" ? "تعديل" : "Edit"}
+      className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+    >
+      <Edit3 className="w-4 h-4" />
+    </button>
+  </div>
+
+  <div className="relative">
+    <button
+      type="button"
+      onClick={() => setPendingDeleteId(g.id)}
+      title={t("delete")}
+      className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600"
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  </div>
+
+  {g.notifyTime && (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => testNotifyNow(g)}
+        title={t("testNotify")}
+        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600"
+      >
+        <Bell className="w-5 h-5" />
+      </button>
+
+      {/* show same inline toast if active for this goal (e.g. notification denied/not supported) */}
+      {toast && toast.goalId === g.id && (
+        <div
+          className={`absolute left-full ml-1 top-1/2 -translate-y-1/2 
+            px-2 py-0.5 rounded text-[10px] shadow whitespace-nowrap
+            ${
+              toast.kind === "success"
+                ? "bg-green-600 text-white"
+                : toast.kind === "warn"
+                ? "bg-yellow-400 text-black"
+                : "bg-blue-600 text-white"
+            }`}
+        >
+          {toast.text}
         </div>
       )}
+    </div>
+  )}
+</div>
+```
+
+
+
+
+
+
+
+
 
       {/* form modal (add / edit) */}
       {showForm && (
