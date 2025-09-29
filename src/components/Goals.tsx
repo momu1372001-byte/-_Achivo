@@ -382,9 +382,26 @@ export default function Goals(props: Props) {
                       {/* toast shown only when target === "check" and goal matches */}
                       {toast && toast.goalId === g.id && toast.target === "check" && (
                         <div
-                          className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10
-                            ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`}
-                          role="status"
+
+
+
+                           
+                         
+                           className={`absolute 
+  sm:left-full left-1/2 sm:ml-2 
+  -translate-x-1/2 sm:translate-x-0 
+  -top-8 sm:top-1/2 sm:-translate-y-1/2 
+  px-2 py-1 
+  rounded-md text-[11px] 
+  shadow-sm whitespace-nowrap z-10
+  ${toast.kind === "success" 
+    ? "bg-green-600 text-white" 
+    : toast.kind === "warn" 
+    ? "bg-yellow-400 text-black" 
+    : "bg-blue-600 text-white"}`}
+
+                         
+                            role="status"
                           aria-live="polite"
                         >
                           {toast.text}
