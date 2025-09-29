@@ -73,13 +73,17 @@ export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
 
-  // Toast (message) state
-  const [toast, setToast] = useState<{ text: string; kind?: "info" | "success" | "warn" } | null>(null);
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  // toast now tied to specific goalId and auto-cleared
+  const [toast, setToast] = useState<{ goalId: string; text: string; kind?: "info" | "success" | "warn" } | null>(null);
+
+  // helper to show a goal-specific toast and auto-clear it
+  const showGoalToast = (goalId: string, text: string, kind: "info" | "success" | "warn" = "info") => {
+    setToast({ goalId, text, kind });
+    window.setTimeout(() => {
+      // only clear if it's the same toast (avoid race)
+      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text ? null : cur));
+    }, 2500);
+  };
 
   // fallback storage for goals if parent doesn't provide callbacks
   const [fallbackGoals, setFallbackGoals] = useState<Goal[]>(() => {
@@ -153,32 +157,31 @@ export default function Goals(props: Props) {
   const addGoal = (payload: Omit<Goal, "id">) => {
     if (onGoalAdd) {
       onGoalAdd(payload);
-      setToast({ text: t("added"), kind: "success" });
+      // cannot reliably know id here — show generic toast (center)
       return;
     }
     const g: Goal = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
     setFallbackGoals((s) => [g, ...s]);
-    setToast({ text: t("added"), kind: "success" });
+    showGoalToast(g.id, t("added"), "success");
   };
 
   const updateGoal = (g: Goal) => {
     if (onGoalUpdate) {
       onGoalUpdate(g);
-      setToast({ text: t("updated"), kind: "success" });
       return;
     }
     setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
-    setToast({ text: t("updated"), kind: "success" });
+    showGoalToast(g.id, t("updated"), "success");
   };
 
   const removeGoal = (id: string) => {
     if (onGoalDelete) {
       onGoalDelete(id);
-      setToast({ text: t("deleted"), kind: "info" });
       return;
     }
     setFallbackGoals((s) => s.filter((g) => g.id !== id));
-    setToast({ text: t("deleted"), kind: "info" });
+    // show toast near nothing (use center) — but we'll show near removed id briefly
+    showGoalToast(id, t("deleted"), "info");
   };
 
   // validate form
@@ -243,36 +246,37 @@ export default function Goals(props: Props) {
     setErrors({});
   };
 
-  // mark today once only
+  // mark today once only (now uses showGoalToast to attach message to goal)
   const markToday = (g: Goal) => {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      setToast({ text: t("alreadyMarked"), kind: "warn" });
+      showGoalToast(g.id, t("alreadyMarked"), "warn");
       window.navigator.vibrate?.(30);
       return;
     }
     const updated: Goal = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     updateGoal(updated);
+    showGoalToast(g.id, (language === "ar" ? "✓" : "Done") as string, "success");
   };
 
   // test notification
   const testNotifyNow = async (g: Goal) => {
     if (!("Notification" in window)) {
-      setToast({ text: t("notifyNotSupported"), kind: "warn" });
+      showGoalToast(g.id, t("notifyNotSupported"), "warn");
       return;
     }
     if (Notification.permission === "granted") {
       new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      setToast({ text: t("testNotify"), kind: "info" });
+      showGoalToast(g.id, t("testNotify"), "info");
       return;
     }
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
       new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      setToast({ text: t("testNotify"), kind: "info" });
+      showGoalToast(g.id, t("testNotify"), "info");
     } else {
-      setToast({ text: t("notifyDenied"), kind: "warn" });
+      showGoalToast(g.id, t("notifyDenied"), "warn");
     }
   };
 
@@ -344,23 +348,74 @@ export default function Goals(props: Props) {
                     </div>
                   </div>
 
+                  {/* buttons column; each button is relative so toast can appear beside it */}
                   <div className="flex flex-col items-center gap-2">
-                    <button type="button" onClick={() => markToday(g)} title={t("markToday")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => markToday(g)}
+                        title={t("markToday")}
+                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </button>
 
-                    <button type="button" onClick={() => openEdit(g)} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
+                      {/* inline toast for this goal (appears to the right of the button) */}
+                      {toast && toast.goalId === g.id && (
+                        <div
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-xs shadow ${
+                            toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"
+                          }`}
+                        >
+                          {toast.text}
+                        </div>
+                      )}
+                    </div>
 
-                    <button type="button" onClick={() => setPendingDeleteId(g.id)} title={t("delete")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(g)}
+                        title={language === "ar" ? "تعديل" : "Edit"}
+                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteId(g.id)}
+                        title={t("delete")}
+                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
 
                     {g.notifyTime && (
-                      <button type="button" onClick={() => testNotifyNow(g)} title={t("testNotify")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600">
-                        <Bell className="w-5 h-5" />
-                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => testNotifyNow(g)}
+                          title={t("testNotify")}
+                          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600"
+                        >
+                          <Bell className="w-5 h-5" />
+                        </button>
+
+                        {/* show same inline toast if active for this goal (e.g. notification denied/not supported) */}
+                        {toast && toast.goalId === g.id && (
+                          <div
+                            className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-xs shadow ${
+                              toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"
+                            }`}
+                          >
+                            {toast.text}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </header>
@@ -503,18 +558,6 @@ export default function Goals(props: Props) {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* toast */}
-      {toast && (
-        <div
-          role="status"
-          className={`fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded shadow text-white ${
-            toast.kind === "success" ? "bg-green-600" : toast.kind === "warn" ? "bg-yellow-600 text-black" : "bg-blue-600"
-          }`}
-        >
-          {toast.text}
         </div>
       )}
     </div>
