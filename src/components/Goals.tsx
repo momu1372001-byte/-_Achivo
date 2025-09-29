@@ -377,18 +377,35 @@ export default function Goals(props: Props) {
                       </button>
 
                       {/* inline toast: right on larger screens, above on small screens */}
-                      {toast && toast.goalId === g.id && (
-                        <div
-                          className={`absolute top-1/2 sm:left-full left-1/2 -translate-y-1/2 sm:-translate-x-0 -translate-x-1/2 sm:ml-2 -mt-7 sm:mt-0 px-2 py-0.5 rounded text-[11px] shadow max-w-xs break-words ${
-                            toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"
-                          }`}
-                          role="status"
-                          aria-live="polite"
-                        >
-                          {toast.text}
-                        </div>
-                      )}
-                    </div>
+                     
+                     
+                     
+                     
+                     
+                     {toast && toast.goalId === g.id && (
+                           <div
+                          className={`absolute left-full ml-1 top-1/2 -translate-y-1/2 
+                                                                                            px-2 py-0.5 rounded text-[10px] shadow whitespace-nowrap
+      ${
+        toast.kind === "success"
+          ? "bg-green-600 text-white"
+          : toast.kind === "warn"
+          ? "bg-yellow-400 text-black"
+          : "bg-blue-600 text-white"
+      }`}
+  >
+    {toast.text}
+  </div>
+)}
+
+                     
+                      
+
+
+
+
+
+
 
                     <div className="relative">
                       <button type="button" onClick={() => openEdit(g)} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
