@@ -383,12 +383,10 @@ export default function Goals(props: Props) {
                       {toast && toast.goalId === g.id && toast.target === "check" && (
                         <div
 
-
-
-                          className={`absolute 
+className={`absolute 
   sm:left-full left-1/2 sm:ml-2 
   -translate-x-1/2 sm:translate-x-0 
-  -ml-6   /* تزحزح الرسالة أكثر لليسار على الموبايل */
+  ml-9   /* تزحزح الرسالة أكثر لليمين (مرة ونصف مقارنة باليسار السابق) */
   -top-8 sm:top-1/2 sm:-translate-y-1/2 
   px-2 py-1 
   rounded-md text-[11px] 
@@ -398,6 +396,8 @@ export default function Goals(props: Props) {
     : toast.kind === "warn" 
     ? "bg-yellow-400 text-black" 
     : "bg-blue-600 text-white"}`}
+
+
  
                          
                           
