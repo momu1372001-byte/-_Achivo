@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Edit3, Trash2, CheckCircle, Bell, X, Calendar } from "lucide-react";
 
+/** نوع الهدف محلي (تكيّف مع ملف types.ts لو رغبت باستبدال) */
 type GoalItem = {
   id: string;
   title: string;
@@ -85,20 +86,26 @@ export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
 
-  // small inline toast tied to a specific goalId
+  // toast tied to specific goal and specific button target
   const [toast, setToast] = useState<
-    { goalId: string; text: string; kind?: "info" | "success" | "warn" } | null
+    | { goalId: string; text: string; kind?: "info" | "success" | "warn"; target?: "check" | "bell" | "global" }
+    | null
   >(null);
 
-  const showGoalToast = (goalId: string, text: string, kind: "info" | "success" | "warn" = "info") => {
-    setToast({ goalId, text, kind });
-    // auto-clear only if same toast after 2000ms
+  const showGoalToast = (
+    goalId: string,
+    text: string,
+    kind: "info" | "success" | "warn" = "info",
+    target: "check" | "bell" | "global" = "global"
+  ) => {
+    setToast({ goalId, text, kind, target });
+    // auto-clear only this toast after 2.2s
     window.setTimeout(() => {
-      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text ? null : cur));
-    }, 2000);
+      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text && cur.target === target ? null : cur));
+    }, 2200);
   };
 
-  // fallback storage if parent doesn't provide
+  // fallback local storage
   const [fallbackGoals, setFallbackGoals] = useState<GoalItem[]>(() => {
     try {
       const raw = localStorage.getItem(FALLBACK_KEY);
@@ -110,7 +117,9 @@ export default function Goals(props: Props) {
   useEffect(() => {
     try {
       localStorage.setItem(FALLBACK_KEY, JSON.stringify(fallbackGoals));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [fallbackGoals]);
 
   const goals = parentGoals && parentGoals.length > 0 ? parentGoals : fallbackGoals;
@@ -135,7 +144,6 @@ export default function Goals(props: Props) {
     return Math.max(1, diff + 1);
   };
 
-  // progress calculation: percent/day = 100 / totalDays
   const calcProgress = (g: GoalItem) => {
     if (!g.startDate || !g.endDate) return 0;
     const total = daysBetweenInclusive(g.startDate, g.endDate);
@@ -165,7 +173,7 @@ export default function Goals(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.duration, form.startDate]);
 
-  // CRUD wrappers (call parent callbacks if provided)
+  // CRUD helpers
   const addGoal = (payload: Omit<GoalItem, "id">) => {
     if (onGoalAdd) {
       onGoalAdd(payload);
@@ -173,7 +181,7 @@ export default function Goals(props: Props) {
     }
     const g: GoalItem = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
     setFallbackGoals((s) => [g, ...s]);
-    showGoalToast(g.id, t("added"), "success");
+    showGoalToast(g.id, t("added"), "success", "global");
   };
 
   const updateGoal = (g: GoalItem) => {
@@ -182,7 +190,7 @@ export default function Goals(props: Props) {
       return;
     }
     setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
-    showGoalToast(g.id, t("updated"), "success");
+    showGoalToast(g.id, t("updated"), "success", "global");
   };
 
   const removeGoal = (id: string) => {
@@ -191,7 +199,7 @@ export default function Goals(props: Props) {
       return;
     }
     setFallbackGoals((s) => s.filter((gg) => gg.id !== id));
-    showGoalToast(id, t("deleted"), "info");
+    showGoalToast(id, t("deleted"), "info", "global");
   };
 
   // validation
@@ -254,42 +262,41 @@ export default function Goals(props: Props) {
     setErrors({});
   };
 
-  // mark today once only, show small inline toast near the button
+  // mark today once only, show toast only next to check button
   const markToday = (g: GoalItem) => {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      showGoalToast(g.id, t("alreadyMarked"), "warn");
-      // small vibration if available (mobile)
+      showGoalToast(g.id, t("alreadyMarked"), "warn", "check");
       window.navigator.vibrate?.(30);
       return;
     }
     const updated: GoalItem = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     updateGoal(updated);
-    showGoalToast(g.id, language === "ar" ? "✓" : "Done", "success");
+    showGoalToast(g.id, language === "ar" ? "✓" : "Done", "success", "check");
   };
 
-  // test notification (inline feedback)
+  // test notification (toast appears next to bell)
   const testNotifyNow = async (g: GoalItem) => {
     if (!("Notification" in window)) {
-      showGoalToast(g.id, t("notifyNotSupported"), "warn");
+      showGoalToast(g.id, t("notifyNotSupported"), "warn", "bell");
       return;
     }
     if (Notification.permission === "granted") {
       new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      showGoalToast(g.id, t("testNotify"), "info");
+      showGoalToast(g.id, t("testNotify"), "info", "bell");
       return;
     }
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
       new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      showGoalToast(g.id, t("testNotify"), "info");
+      showGoalToast(g.id, t("testNotify"), "info", "bell");
     } else {
-      showGoalToast(g.id, t("notifyDenied"), "warn");
+      showGoalToast(g.id, t("notifyDenied"), "warn", "bell");
     }
   };
 
-  // computed list with progress
+  // computed list
   const list = useMemo(() => (goals || []).slice().map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
 
   return (
@@ -303,13 +310,10 @@ export default function Goals(props: Props) {
           </p>
         </div>
 
-        <div>
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow"
-          >
-            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t("addGoal")}</span>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={openAdd} className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t("addGoal")}</span>
           </button>
         </div>
       </div>
@@ -364,6 +368,7 @@ export default function Goals(props: Props) {
 
                   {/* buttons column; each button is relative so toast can appear beside it */}
                   <div className="flex flex-col items-center gap-2">
+                    {/* check button area */}
                     <div className="relative">
                       <button
                         type="button"
@@ -374,12 +379,13 @@ export default function Goals(props: Props) {
                         <CheckCircle className="w-5 h-5" />
                       </button>
 
-                      {/* small inline toast for this goal */}
-                      {toast && toast.goalId === g.id && (
+                      {/* toast shown only when target === "check" and goal matches */}
+                      {toast && toast.goalId === g.id && toast.target === "check" && (
                         <div
-                          className={`absolute left-full ml-1 top-1/2 -translate-y-1/2 
-                            px-2 py-0.5 rounded text-[10px] shadow whitespace-nowrap
+                          className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10
                             ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`}
+                          role="status"
+                          aria-live="polite"
                         >
                           {toast.text}
                         </div>
@@ -404,11 +410,13 @@ export default function Goals(props: Props) {
                           <Bell className="w-5 h-5" />
                         </button>
 
-                        {toast && toast.goalId === g.id && (
+                        {/* toast shown only when target === "bell" and goal matches */}
+                        {toast && toast.goalId === g.id && toast.target === "bell" && (
                           <div
-                            className={`absolute left-full ml-1 top-1/2 -translate-y-1/2 
-                              px-2 py-0.5 rounded text-[10px] shadow whitespace-nowrap
+                            className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10
                               ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`}
+                            role="status"
+                            aria-live="polite"
                           >
                             {toast.text}
                           </div>
@@ -465,7 +473,12 @@ export default function Goals(props: Props) {
                 </div>
                 <div>
                   <label className="block text-sm">{t("end")}</label>
-                  <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value, duration: String(daysBetweenInclusive(f.startDate, e.target.value)) }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value, duration: String(daysBetweenInclusive(f.startDate, e.target.value)) }))}
+                    className="w-full p-2 border rounded bg-white dark:bg-gray-800"
+                  />
                   {errors.endDate && <div className="text-xs text-red-500 mt-1">{errors.endDate}</div>}
                 </div>
               </div>
