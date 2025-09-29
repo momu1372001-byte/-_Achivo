@@ -42,7 +42,7 @@ const tr = {
     cancel: "إلغاء",
     delete: "حذف",
     markToday: "وضع علامة اليوم",
-    alreadyMarked: "لقد سجّلت إنجاز اليوم بالفعل — جرّب غدًا",
+    alreadyMarked: "لقد سجّلت إنجاز اليوم بالفعل",
     noGoals: "لا توجد أهداف بعد",
     testNotify: "جرّب التنبيه",
     deleteConfirm: "هل تريد حذف هذا الهدف؟",
@@ -52,7 +52,7 @@ const tr = {
     updated: "تم تحديث الهدف",
     deleted: "تم حذف الهدف",
     notifyDenied: "تم رفض أذونات الإشعارات",
-    notifyNotSupported: "الإشعارات غير مدعومة في هذا المتصفح",
+    notifyNotSupported: "الإشعارات",
   },
   en: {
     header: "Goals",
