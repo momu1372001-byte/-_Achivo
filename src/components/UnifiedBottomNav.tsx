@@ -86,7 +86,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
           onClick={() => setServicesOpen(!servicesOpen)}
           className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-xl hover:bg-blue-600 transition"
         >
-          <Plus size={30} className={`${servicesOpen ? "rotate-45 transition" : "transition"}`} />
+          <Plus
+            size={30}
+            className={`${servicesOpen ? "rotate-45 transition" : "transition"}`}
+          />
         </button>
 
         {/* الأيقونات على شكل نصف دائرة */}
@@ -96,20 +99,21 @@ const UnifiedBottomNav: React.FC<Props> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-28 left-1/2 transform -translate-x-1/2" 
-              // ⬆️ رفع الأيقونات لفوق (بدل bottom-20 خليتها bottom-28)
+              className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
             >
-              <div className="relative w-[420px] h-[240px]">
+              <div className="relative">
                 {services.map((srv, i) => {
                   const Icon = srv.icon;
 
                   // توزيع الأيقونات على نصف دائرة (180°)
-                  const totalAngle = Math.PI;
-                  const startAngle = Math.PI;
-                  const angle = startAngle - (i / (services.length - 1)) * totalAngle;
+                  const totalAngle = Math.PI; // نصف دائرة بالراديان
+                  const startAngle = Math.PI; // يبدأ من يسار ليمين
+                  const angle =
+                    startAngle - (i / (services.length - 1)) * totalAngle;
 
-                  // نصف القطر أكبر عشان الأيقونات تبعد أكتر
-                  const radius = Math.min(window.innerWidth, window.innerHeight) / 2.3;
+                  // نصف القطر ديناميك على حسب حجم الشاشة
+                  const radius =
+                    Math.min(window.innerWidth, window.innerHeight) / 2.3;
 
                   const x = Math.cos(angle) * radius;
                   const y = -Math.sin(angle) * radius;
@@ -120,7 +124,11 @@ const UnifiedBottomNav: React.FC<Props> = ({
                       initial={{ x: 0, y: 0, opacity: 0 }}
                       animate={{ x, y, opacity: 1 }}
                       exit={{ x: 0, y: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 15,
+                      }}
                       className="absolute flex flex-col items-center"
                     >
                       <button
