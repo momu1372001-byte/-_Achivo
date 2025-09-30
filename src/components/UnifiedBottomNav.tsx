@@ -80,7 +80,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
         )}
       </div>
 
-      {/* زر + في الأسفل */}
+      {/* زر + في أسفل المنتصف */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
         <button
           onClick={() => setServicesOpen(!servicesOpen)}
@@ -89,7 +89,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
           <Plus size={30} className={`${servicesOpen ? "rotate-45 transition" : "transition"}`} />
         </button>
 
-        {/* Arc Menu */}
+        {/* الأيقونات على شكل نصف دائرة */}
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -102,12 +102,12 @@ const UnifiedBottomNav: React.FC<Props> = ({
                 {services.map((srv, i) => {
                   const Icon = srv.icon;
 
-                  // توزيع الأيقونات على قوس 120° (من -60° إلى +60°)
-                  const totalAngle = (120 * Math.PI) / 180;
-                  const startAngle = (-60 * Math.PI) / 180;
-                  const angle = startAngle + (i / (services.length - 1)) * totalAngle;
+                  // توزيع الأيقونات على نصف دائرة (180°)
+                  const totalAngle = Math.PI; // نصف دائرة بالراديان
+                  const startAngle = Math.PI; // يبدأ من يسار ليمين
+                  const angle = startAngle - (i / (services.length - 1)) * totalAngle;
 
-                  const radius = 150; // المسافة من زر +
+                  const radius = 160; // المسافة من زر +
                   const x = Math.cos(angle) * radius;
                   const y = -Math.sin(angle) * radius;
 
