@@ -98,34 +98,38 @@ const UnifiedBottomNav: React.FC<Props> = ({
               exit={{ opacity: 0 }}
               className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
             >
-              <div className="relative w-[350px] h-[180px]">
+              <div className="relative w-[500px] h-[260px]">
                 {services.map((srv, i) => {
                   const Icon = srv.icon;
-                  const angle = (i / (services.length - 1)) * Math.PI; // نصف دائرة
-                  const radius = 130;
+                  const angle = (i / (services.length - 1)) * Math.PI; // نصف دائرة (180°)
+                  const radius = 180; // المسافة من المركز
                   const x = Math.cos(angle) * radius;
                   const y = -Math.sin(angle) * radius;
 
                   return (
-                    <motion.button
+                    <motion.div
                       key={srv.key}
                       initial={{ x: 0, y: 0, opacity: 0 }}
                       animate={{ x, y, opacity: 1 }}
                       exit={{ x: 0, y: 0, opacity: 0 }}
                       transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      onClick={() => {
-                        setActiveTab(srv.key);
-                        setServicesOpen(false);
-                      }}
-                      className={`absolute flex flex-col items-center justify-center w-14 h-14 rounded-full shadow-md ${
-                        activeTab === srv.key
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
+                      className="absolute flex flex-col items-center"
                     >
-                      <Icon size={22} />
-                      <span className="text-[10px] mt-1">{srv.label}</span>
-                    </motion.button>
+                      <button
+                        onClick={() => {
+                          setActiveTab(srv.key);
+                          setServicesOpen(false);
+                        }}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${
+                          activeTab === srv.key
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        }`}
+                      >
+                        <Icon size={22} />
+                      </button>
+                      <span className="mt-1 text-xs">{srv.label}</span>
+                    </motion.div>
                   );
                 })}
               </div>
