@@ -98,7 +98,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
               exit={{ opacity: 0 }}
               className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
             >
-              <div className="relative w-[400px] h-[220px]">
+              {/* حاوية متجاوبة */}
+              <div className="relative w-[90vw] max-w-[400px] h-[180px] sm:h-[220px]">
                 {services.map((srv, i) => {
                   const Icon = srv.icon;
 
@@ -107,7 +108,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
                   const startAngle = Math.PI; // يبدأ من يسار ليمين
                   const angle = startAngle - (i / (services.length - 1)) * totalAngle;
 
-                  const radius = 160; // المسافة من زر +
+                  // نصف القطر متغير (Responsive)
+                  const radius = window.innerWidth < 640 ? 100 : 160;
                   const x = Math.cos(angle) * radius;
                   const y = -Math.sin(angle) * radius;
 
