@@ -16,8 +16,10 @@ import {
   initialTasks,
   initialGoals,
 } from "./data/initialData";
-import BottomBar from "./components/BottomBar";
-import { Settings, Bot } from "lucide-react";
+//import BottomBar from "./components/BottomBar";
+import UnifiedBottomNav from "./components/UnifiedBottomNav";
+
+//import { Settings, Bot } from "lucide-react";
 
 type ActiveModal = "settings" | "security" | "ai" | null;
 //type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
@@ -337,13 +339,42 @@ case "pomodoro":
       <main className="pb-20">{renderActiveTab()}</main>
 
       {/* ✅ أيقونات محسنة (إعدادات + AI) */}
-      <BottomBar
+      
+      
+      
+      
+     { /*<BottomBar
         onOpenSettings={() => setActiveModal("settings")}
         onOpenAI={() => setActiveModal("ai")}
         language={language}
         settingsIcon={<Settings className="w-6 h-6" />}
         aiIcon={<Bot className="w-6 h-6" />}
       />
+      */}
+
+
+
+
+<UnifiedBottomNav
+  activeTab={activeTab}
+  setActiveTab={setActiveTab}
+  onOpenSettings={() => setActiveModal("settings")}
+  onOpenAI={() => setActiveModal("ai")}
+  language={language as "ar" | "en"}
+/>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       {renderModal()}
     </div>
