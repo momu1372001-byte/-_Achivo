@@ -10,7 +10,7 @@ import {
   ListTodo,
   Settings,
   Bot,
-  Menu,
+  Plus,
 } from "lucide-react";
 
 interface Props {
@@ -28,7 +28,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
   onOpenAI,
   language = "ar",
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState(false);
 
   const tabs = [
     { key: "dashboard", label: language === "ar" ? "الرئيسية" : "Home", icon: Home },
@@ -41,67 +41,63 @@ const UnifiedBottomNav: React.FC<Props> = ({
   ];
 
   return (
-    <>
-      {/* زر القائمة العلوية */}
-      <div className="fixed top-4 right-4 z-50">
+    <div>
+      {/* 🔹 الشريط السفلي */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg flex justify-around items-center py-2 z-40">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-col items-center text-sm transition ${
+                isActive
+                  ? "text-blue-500 dark:text-blue-400"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              <Icon size={22} />
+              <span className="mt-1">{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 🔹 زر واحد في المنتصف */}
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
         <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+          onClick={() => setOpenMenu(!openMenu)}
+          className="w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg hover:bg-blue-600 transition"
         >
-          <Menu size={24} className="text-gray-800 dark:text-gray-200" />
+          <Plus size={28} className={`${openMenu ? "rotate-45 transition" : "transition"}`} />
         </button>
 
-        {/* القائمة المنبثقة */}
-        {menuOpen && (
-          <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {/* 🔹 القائمة المنبثقة */}
+        {openMenu && (
+          <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 flex flex-col gap-3 items-center">
             <button
               onClick={() => {
                 onOpenAI();
-                setMenuOpen(false);
+                setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-md hover:bg-purple-600 transition"
             >
-              <Bot size={20} />
-              <span>{language === "ar" ? "المساعد" : "AI Assistant"}</span>
+              <Bot size={22} />
             </button>
             <button
               onClick={() => {
                 onOpenSettings();
-                setMenuOpen(false);
+                setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="w-12 h-12 rounded-full bg-gray-600 text-white flex items-center justify-center shadow-md hover:bg-gray-700 transition"
             >
-              <Settings size={20} />
-              <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
+              <Settings size={22} />
             </button>
           </div>
         )}
       </div>
-
-      {/* الشريط السفلي مع Scroll */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg overflow-x-auto">
-        <div className="flex justify-start items-center px-2 py-2 gap-4 min-w-max">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex flex-col items-center text-sm transition ${
-                  isActive
-                    ? "text-blue-500 dark:text-blue-400"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                <Icon size={24} />
-                <span className="mt-1">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </>
+    </div>
   );
 };
 
