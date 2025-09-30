@@ -98,12 +98,13 @@ const UnifiedBottomNav: React.FC<Props> = ({
               exit={{ opacity: 0 }}
               className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
             >
-              <div className="relative w-[300px] h-[150px]">
+              <div className="relative w-[350px] h-[180px]">
                 {services.map((srv, i) => {
                   const Icon = srv.icon;
                   const angle = (i / (services.length - 1)) * Math.PI; // نصف دائرة
-                  const x = Math.cos(angle) * 120;
-                  const y = -Math.sin(angle) * 120;
+                  const radius = 130;
+                  const x = Math.cos(angle) * radius;
+                  const y = -Math.sin(angle) * radius;
 
                   return (
                     <motion.button
@@ -116,13 +117,14 @@ const UnifiedBottomNav: React.FC<Props> = ({
                         setActiveTab(srv.key);
                         setServicesOpen(false);
                       }}
-                      className={`absolute w-14 h-14 rounded-full flex flex-col items-center justify-center text-xs shadow-md ${
+                      className={`absolute flex flex-col items-center justify-center w-14 h-14 rounded-full shadow-md ${
                         activeTab === srv.key
                           ? "bg-blue-500 text-white"
                           : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
                       }`}
                     >
                       <Icon size={22} />
+                      <span className="text-[10px] mt-1">{srv.label}</span>
                     </motion.button>
                   );
                 })}
