@@ -1,4 +1,4 @@
-// UnifiedBottomNav.tsx
+// src/components/UnifiedBottomNav.tsx
 import React, { useState } from "react";
 import {
   Home,
@@ -13,6 +13,7 @@ import {
   Menu,
   Plus,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   activeTab: string;
@@ -88,31 +89,47 @@ const UnifiedBottomNav: React.FC<Props> = ({
           <Plus size={30} className={`${servicesOpen ? "rotate-45 transition" : "transition"}`} />
         </button>
 
-        {/* قائمة الخدمات تظهر رأسياً */}
-        {servicesOpen && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-            {services.map((srv) => {
-              const Icon = srv.icon;
-              return (
-                <button
-                  key={srv.key}
-                  onClick={() => {
-                    setActiveTab(srv.key);
-                    setServicesOpen(false);
-                  }}
-                  className={`flex flex-col items-center w-16 h-16 rounded-full justify-center transition ${
-                    activeTab === srv.key
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  }`}
-                >
-                  <Icon size={22} />
-                  <span className="text-[10px] mt-1">{srv.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Arc Menu */}
+        <AnimatePresence>
+          {servicesOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
+            >
+              <div className="relative w-[300px] h-[150px]">
+                {services.map((srv, i) => {
+                  const Icon = srv.icon;
+                  const angle = (i / (services.length - 1)) * Math.PI; // نصف دائرة
+                  const x = Math.cos(angle) * 120;
+                  const y = -Math.sin(angle) * 120;
+
+                  return (
+                    <motion.button
+                      key={srv.key}
+                      initial={{ x: 0, y: 0, opacity: 0 }}
+                      animate={{ x, y, opacity: 1 }}
+                      exit={{ x: 0, y: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                      onClick={() => {
+                        setActiveTab(srv.key);
+                        setServicesOpen(false);
+                      }}
+                      className={`absolute w-14 h-14 rounded-full flex flex-col items-center justify-center text-xs shadow-md ${
+                        activeTab === srv.key
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      <Icon size={22} />
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );
