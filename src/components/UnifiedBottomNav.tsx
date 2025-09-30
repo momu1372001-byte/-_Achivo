@@ -1,4 +1,4 @@
-// src/components/UnifiedBottomNav.tsx
+// UnifiedBottomNav.tsx
 import React, { useState } from "react";
 import {
   Home,
@@ -44,7 +44,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
   return (
     <>
-      {/* 🔹 زر القائمة العلوية (Settings + AI) في أقصى اليسار */}
+      {/* زر القائمة العلوية (Settings + AI) */}
       <div className="fixed top-4 left-4 z-50">
         <button
           onClick={() => setOpenMenu(!openMenu)}
@@ -79,7 +79,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
         )}
       </div>
 
-      {/* 🔹 زر مركزي أسفل الشاشة (FAB) */}
+      {/* زر + في الأسفل */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
         <button
           onClick={() => setServicesOpen(!servicesOpen)}
@@ -88,9 +88,9 @@ const UnifiedBottomNav: React.FC<Props> = ({
           <Plus size={30} className={`${servicesOpen ? "rotate-45 transition" : "transition"}`} />
         </button>
 
-        {/* القائمة المنبثقة للخدمات */}
+        {/* قائمة الخدمات تظهر رأسياً */}
         {servicesOpen && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 grid grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
             {services.map((srv) => {
               const Icon = srv.icon;
               return (
@@ -100,14 +100,14 @@ const UnifiedBottomNav: React.FC<Props> = ({
                     setActiveTab(srv.key);
                     setServicesOpen(false);
                   }}
-                  className={`flex flex-col items-center p-2 rounded-lg transition ${
+                  className={`flex flex-col items-center w-16 h-16 rounded-full justify-center transition ${
                     activeTab === srv.key
-                      ? "text-blue-500 bg-blue-50 dark:bg-blue-900/40"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
                   }`}
                 >
-                  <Icon size={26} />
-                  <span className="text-xs mt-1">{srv.label}</span>
+                  <Icon size={22} />
+                  <span className="text-[10px] mt-1">{srv.label}</span>
                 </button>
               );
             })}
