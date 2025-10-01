@@ -172,7 +172,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
       <div
         className="
           bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 
-          grid grid-cols-3 sm:grid-cols-4 gap-y-6 gap-x-6
+          grid gap-6 
+          [grid-template-columns:repeat(auto-fit,minmax(90px,1fr))]
         "
       >
         {services.map((srv) => {
@@ -209,15 +210,6 @@ const UnifiedBottomNav: React.FC<Props> = ({
   )}
 </AnimatePresence>
 
-            
-         
-         
-         
-         
-         
-         
-         
-         
          
           </div>
         </div>
