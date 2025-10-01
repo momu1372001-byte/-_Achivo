@@ -33,10 +33,11 @@ const UnifiedBottomNav: React.FC<Props> = ({
 }) => {
   const [openMenu, setOpenMenu] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null); // يحتوي زر + و القوائم
+  const menuRef = useRef<HTMLDivElement | null>(null); // يحتوي قائمة الإعدادات (top-left)
   const prefersReducedMotion = useReducedMotion();
 
-  // Services: removed "dashboard" so Home icon lives outside the grid
+  // قائمة الخدمات (بدون dashboard لأن أيقونة Home بعيدة الآن)
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -46,7 +47,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  // close on Esc
+  // إغلاق بالـ Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -58,21 +59,25 @@ const UnifiedBottomNav: React.FC<Props> = ({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // click outside to close
+  // إغلاق بالنقر خارج القوائم (نستخدم 'click' لكي لا نغلق قبل تنفيذ نقرات الأزرار)
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (!containerRef.current) return;
-      const el = containerRef.current;
-      if (!el.contains(e.target as Node)) {
+      const target = e.target as Node | null;
+      const insideContainer = containerRef.current && target && containerRef.current.contains(target);
+      const insideMenu = menuRef.current && target && menuRef.current.contains(target);
+
+      // لو النقر خارج أي من المنطقتين → نقفل
+      if (!insideContainer && !insideMenu) {
         setServicesOpen(false);
         setOpenMenu(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // motion variants (stagger)
+  // نسق الحركة (stagger) مع احترام reduced motion
   const containerVariants = prefersReducedMotion
     ? {}
     : {
@@ -87,13 +92,13 @@ const UnifiedBottomNav: React.FC<Props> = ({
         show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 20 } },
       };
 
-  // helper: whether to show the external Home button
-  const showExternalHome = activeTab !== "dashboard";
+  // زر Home بعيد: نظهره فقط إذا المستخدم ليس في الصفحة الرئيسية
+  const showFarHome = activeTab !== "dashboard";
 
   return (
     <>
-      {/* top-left menu (Settings + AI) */}
-      <div className="fixed top-4 left-4 z-50">
+      {/* قائمة الإعدادات اليسار العليا */}
+      <div ref={menuRef} className="fixed top-4 left-4 z-[80]">
         <button
           aria-expanded={openMenu}
           aria-label={language === "ar" ? "قائمة" : "Menu"}
@@ -103,43 +108,49 @@ const UnifiedBottomNav: React.FC<Props> = ({
           <Menu size={24} className="text-gray-800 dark:text-gray-200" />
         </button>
 
-        {openMenu && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.12 }}
-            className="absolute left-0 mt-2 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-            role="menu"
-            aria-label={language === "ar" ? "قائمة الإعدادات" : "Settings menu"}
-          >
-            <button
-              onClick={() => {
-                onOpenAI();
-                setOpenMenu(false);
-              }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+        <AnimatePresence>
+          {openMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.12 }}
+              className="absolute left-0 mt-2 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+              role="menu"
+              aria-label={language === "ar" ? "قائمة الإعدادات" : "Settings menu"}
             >
-              <Bot size={18} />
-              <span>{language === "ar" ? "المساعد الذكي" : "AI Assistant"}</span>
-            </button>
-            <button
-              onClick={() => {
-                onOpenSettings();
-                setOpenMenu(false);
-              }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
-            >
-              <Settings size={18} />
-              <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
-            </button>
-          </motion.div>
-        )}
+              <button
+                type="button"
+                onClick={() => {
+                  // نفذ الحدث الممرّر من الـ props (تأكد إنك مرّرت الدالة من الأب)
+                  onOpenAI();
+                  setOpenMenu(false);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+              >
+                <Bot size={18} />
+                <span>{language === "ar" ? "المساعد الذكي" : "AI Assistant"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenSettings();
+                  setOpenMenu(false);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+              >
+                <Settings size={18} />
+                <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* bottom center: services grid (on top) + controls row (home + plus) */}
-      <div ref={containerRef} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center">
-        {/* backdrop blur when open */}
+      {/* الحاوية الأساسية في الأسفل (زر +، البطاقة، و زر Home البعيد) */}
+      <div ref={containerRef} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[70] flex flex-col items-center">
+        {/* backdrop (خلفية ضبابية) — z أدنى من العناصر التفاعلية لتجنب Blur على الأزرار */}
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -147,14 +158,15 @@ const UnifiedBottomNav: React.FC<Props> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm"
               aria-hidden
+              // لو ضغطت على الخلفية تغلق
               onClick={() => setServicesOpen(false)}
             />
           )}
         </AnimatePresence>
 
-        {/* services card */}
+        {/* بطاقة الخدمات (تظهر فوق الزر +) */}
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -163,7 +175,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
               exit="hidden"
               variants={containerVariants}
               transition={{ duration: 0.18 }}
-              className="z-50 mb-4"
+              className="z-[70] mb-4"
             >
               <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
                 {services.map((srv) => {
@@ -171,6 +183,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
                   return (
                     <motion.div key={srv.key} variants={itemVariants} className="flex flex-col items-center">
                       <button
+                        type="button"
                         aria-label={srv.label}
                         title={srv.label}
                         onClick={() => {
@@ -194,33 +207,39 @@ const UnifiedBottomNav: React.FC<Props> = ({
           )}
         </AnimatePresence>
 
-        {/* controls row: external Home (left) + Plus (right) */}
-        <div className="flex items-center gap-3">
-          {/* External Home: يظهر فقط إذا activeTab !== 'dashboard' */}
+        {/* صف التحكم: زر Home البعيد (يسار) و زر + (يمين) */}
+        <div className="flex items-center gap-3 z-[71]">
+          {/* Home بعيد في الزاوية اليسرى السفلية (يظهر فقط لو مش على dashboard) */}
           <AnimatePresence>
-            {showExternalHome && (
-              <motion.button
-                key="external-home"
-                initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.95 }}
+            {showFarHome && (
+              <motion.div
+                key="far-home"
+                initial={{ opacity: 0, x: -6, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -6, scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                aria-label={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
-                title={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
-                onClick={() => {
-                  setActiveTab("dashboard");
-                  // optionally close services if open
-                  setServicesOpen(false);
-                }}
-                className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="fixed left-6 bottom-6 z-[75]"
               >
-                <Home size={20} className="text-gray-700 dark:text-gray-200" />
-              </motion.button>
+                <button
+                  type="button"
+                  aria-label={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                  title={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                  onClick={() => {
+                    setActiveTab("dashboard");
+                    setServicesOpen(false);
+                    setOpenMenu(false);
+                  }}
+                  className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300"
+                >
+                  <Home size={20} className="text-gray-700 dark:text-gray-200" />
+                </button>
+              </motion.div>
             )}
           </AnimatePresence>
 
-          {/* plus button */}
+          {/* زر + */}
           <button
+            type="button"
             aria-expanded={servicesOpen}
             aria-label={servicesOpen ? (language === "ar" ? "إغلاق" : "Close") : (language === "ar" ? "فتح الخدمات" : "Open services")}
             onClick={() => setServicesOpen((s) => !s)}
