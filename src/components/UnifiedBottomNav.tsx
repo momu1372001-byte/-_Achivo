@@ -1,4 +1,3 @@
-// src/components/UnifiedBottomNav.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   Home,
@@ -19,16 +18,17 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 interface Props {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onOpenSettings: () => void;
-  onOpenAI: () => void;
+  onOpenSettings?: () => void;
+  onOpenAI?: () => void;
   language?: "ar" | "en";
 }
 
 const UnifiedBottomNav: React.FC<Props> = ({
   activeTab,
   setActiveTab,
-  onOpenSettings,
-  onOpenAI,
+  // ✅ دوال افتراضية عشان تشتغل حتى لو ما تبعتش من الـ parent
+  onOpenSettings = () => alert("⚙️ فتح الإعدادات"),
+  onOpenAI = () => alert("🤖 فتح المساعد الذكي"),
   language = "ar",
 }) => {
   const [openMenu, setOpenMenu] = useState(false);
@@ -36,6 +36,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
+  // الخدمات
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -92,7 +93,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
   return (
     <>
-      {/* زر القائمة (الإعدادات + الذكاء الاصطناعي) - أسفل يسار */}
+      {/* زر القائمة (الإعدادات + المساعد الذكي) - أسفل يسار */}
       <div className="fixed bottom-6 left-4 z-[9999]">
         <button
           aria-expanded={openMenu}
@@ -112,17 +113,15 @@ const UnifiedBottomNav: React.FC<Props> = ({
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.12 }}
             className="absolute bottom-16 left-0 w-44 
-           bg-white dark:bg-gray-800 shadow-lg rounded-lg 
-           border border-gray-200 dark:border-gray-700 overflow-hidden 
-           z-[11000] pointer-events-auto"
-
-          
-                       role="menu"
+                       bg-white dark:bg-gray-800 shadow-lg rounded-lg 
+                       border border-gray-200 dark:border-gray-700 overflow-hidden 
+                       z-[10000]"
+            role="menu"
           >
             {/* زر المساعد الذكي */}
             <button
               onClick={() => {
-                if (onOpenAI) onOpenAI();
+                onOpenAI();
                 setOpenMenu(false);
               }}
               className="flex items-center gap-2 w-full px-4 py-2 
@@ -136,7 +135,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
             {/* زر الإعدادات */}
             <button
               onClick={() => {
-                if (onOpenSettings) onOpenSettings();
+                onOpenSettings();
                 setOpenMenu(false);
               }}
               className="flex items-center gap-2 w-full px-4 py-2 
@@ -162,9 +161,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-             // className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm"
-              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm pointer-events-auto"
-
+              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm"
               aria-hidden
               onClick={() => setServicesOpen(false)}
             />
