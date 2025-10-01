@@ -112,10 +112,12 @@ const UnifiedBottomNav: React.FC<Props> = ({
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.12 }}
             className="absolute bottom-16 left-0 w-44 
-                       bg-white dark:bg-gray-800 shadow-lg rounded-lg 
-                       border border-gray-200 dark:border-gray-700 overflow-hidden 
-                       z-[10000]"
-            role="menu"
+           bg-white dark:bg-gray-800 shadow-lg rounded-lg 
+           border border-gray-200 dark:border-gray-700 overflow-hidden 
+           z-[11000] pointer-events-auto"
+
+          
+                       role="menu"
           >
             {/* زر المساعد الذكي */}
             <button
@@ -160,7 +162,9 @@ const UnifiedBottomNav: React.FC<Props> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm"
+             // className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm pointer-events-auto"
+
               aria-hidden
               onClick={() => setServicesOpen(false)}
             />
