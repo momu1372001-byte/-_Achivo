@@ -90,15 +90,24 @@ const UnifiedBottomNav: React.FC<Props> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="mb-4 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 grid grid-cols-3 gap-4"
+              //className="mb-4 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 grid grid-cols-3 gap-4"
+              className="mb-4 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 grid grid-cols-3 gap-6"
+
             >
               {services.map((srv) => {
                 const Icon = srv.icon;
                 return (
-                  <div
-                    key={srv.key}
-                    className="flex flex-col items-center"
-                  >
+                  
+                  
+                 // <div
+                  //  key={srv.key}
+                    //className="flex flex-col items-center"
+                  //>
+                    <div
+                          key={srv.key}
+                         className="flex flex-col items-center space-y-2"
+                            >
+
                     <button
                       onClick={() => {
                         setActiveTab(srv.key);
