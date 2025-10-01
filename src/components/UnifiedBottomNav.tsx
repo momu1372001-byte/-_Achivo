@@ -12,6 +12,7 @@ import {
   Bot,
   Menu,
   Plus,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -81,79 +82,52 @@ const UnifiedBottomNav: React.FC<Props> = ({
       </div>
 
       {/* زر + في أسفل المنتصف */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center">
+        <AnimatePresence>
+          {servicesOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="mb-4 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 grid grid-cols-3 gap-4"
+            >
+              {services.map((srv) => {
+                const Icon = srv.icon;
+                return (
+                  <div
+                    key={srv.key}
+                    className="flex flex-col items-center"
+                  >
+                    <button
+                      onClick={() => {
+                        setActiveTab(srv.key);
+                        setServicesOpen(false);
+                      }}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${
+                        activeTab === srv.key
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      <Icon size={22} />
+                    </button>
+                    <span className="mt-1 text-xs text-gray-800 dark:text-gray-200">
+                      {srv.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <button
           onClick={() => setServicesOpen(!servicesOpen)}
           className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-xl hover:bg-blue-600 transition"
         >
-          <Plus
-            size={30}
-            className={`${servicesOpen ? "rotate-45 transition" : "transition"}`}
-          />
+          {servicesOpen ? <X size={30} /> : <Plus size={30} />}
         </button>
-
-        {/* الأيقونات على شكل نصف دائرة */}
-        <AnimatePresence>
-          {servicesOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute bottom-20 left-1/2 transform -translate-x-1/2"
-            >
-              <div className="relative">
-                {services.map((srv, i) => {
-                  const Icon = srv.icon;
-
-                  // توزيع الأيقونات على نصف دائرة (180°)
-                  const totalAngle = Math.PI; // نصف دائرة بالراديان
-                  const startAngle = Math.PI; // يبدأ من يسار ليمين
-                  const angle =
-                    startAngle - (i / (services.length - 1)) * totalAngle;
-
-                  // نصف القطر ديناميك على حسب حجم الشاشة
-                  const radius =
-                    Math.min(window.innerWidth, window.innerHeight) / 2.3;
-
-                  const x = Math.cos(angle) * radius;
-                  const y = -Math.sin(angle) * radius;
-
-                  return (
-                    <motion.div
-                      key={srv.key}
-                      initial={{ x: 0, y: 0, opacity: 0 }}
-                      animate={{ x, y, opacity: 1 }}
-                      exit={{ x: 0, y: 0, opacity: 0 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 200,
-                        damping: 15,
-                      }}
-                      className="absolute flex flex-col items-center"
-                    >
-                      <button
-                        onClick={() => {
-                          setActiveTab(srv.key);
-                          setServicesOpen(false);
-                        }}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${
-                          activeTab === srv.key
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                        }`}
-                      >
-                        <Icon size={22} />
-                      </button>
-                      <span className="mt-1 text-xs text-gray-800 dark:text-gray-200">
-                        {srv.label}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </>
   );
