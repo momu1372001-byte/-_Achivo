@@ -36,8 +36,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
+  // Services: removed "dashboard" so Home icon lives outside the grid
   const services = [
-    { key: "dashboard", label: language === "ar" ? "الرئيسية" : "Home", icon: Home },
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
     { key: "goals", label: language === "ar" ? "الأهداف" : "Goals", icon: Target },
@@ -46,7 +46,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  // keyboard: close on Escape
+  // close on Esc
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -58,7 +58,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // click outside to close (menu + services)
+  // click outside to close
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (!containerRef.current) return;
@@ -87,9 +87,12 @@ const UnifiedBottomNav: React.FC<Props> = ({
         show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 20 } },
       };
 
+  // helper: whether to show the external Home button
+  const showExternalHome = activeTab !== "dashboard";
+
   return (
     <>
-      {/* زر القائمة العلوية (Settings + AI) */}
+      {/* top-left menu (Settings + AI) */}
       <div className="fixed top-4 left-4 z-50">
         <button
           aria-expanded={openMenu}
@@ -134,9 +137,9 @@ const UnifiedBottomNav: React.FC<Props> = ({
         )}
       </div>
 
-      {/* زر + في أسفل المنتصف مع قائمة الأيقونات */}
+      {/* bottom center: services grid (on top) + controls row (home + plus) */}
       <div ref={containerRef} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center">
-        {/* خلفية نصف شفافة/ضبابية لمن يريد تسليط التركيز على القائمة */}
+        {/* backdrop blur when open */}
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -151,6 +154,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
           )}
         </AnimatePresence>
 
+        {/* services card */}
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -161,16 +165,11 @@ const UnifiedBottomNav: React.FC<Props> = ({
               transition={{ duration: 0.18 }}
               className="z-50 mb-4"
             >
-              {/* البطاقة التي تحتوي الـ grid — responsive */}
-              <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-6 w-[min(92vw,720px)]">
+              <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
                 {services.map((srv) => {
                   const Icon = srv.icon;
                   return (
-                    <motion.div
-                      key={srv.key}
-                      variants={itemVariants}
-                      className="flex flex-col items-center"
-                    >
+                    <motion.div key={srv.key} variants={itemVariants} className="flex flex-col items-center">
                       <button
                         aria-label={srv.label}
                         title={srv.label}
@@ -186,11 +185,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
                       >
                         <Icon size={22} />
                       </button>
-
-                      {/* label: on small screens show below always; on larger screens keep small and rely on tooltip (title) */}
-                      <span className="mt-2 text-[11px] text-gray-800 dark:text-gray-200 text-center">
-                        {srv.label}
-                      </span>
+                      <span className="mt-2 text-[11px] text-gray-800 dark:text-gray-200 text-center">{srv.label}</span>
                     </motion.div>
                   );
                 })}
@@ -199,15 +194,41 @@ const UnifiedBottomNav: React.FC<Props> = ({
           )}
         </AnimatePresence>
 
-        {/* زر + */}
-        <button
-          aria-expanded={servicesOpen}
-          aria-label={servicesOpen ? (language === "ar" ? "إغلاق" : "Close") : (language === "ar" ? "فتح الخدمات" : "Open services")}
-          onClick={() => setServicesOpen((s) => !s)}
-          className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xl hover:bg-blue-700 transition-transform transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300"
-        >
-          {servicesOpen ? <X size={28} /> : <Plus size={28} />}
-        </button>
+        {/* controls row: external Home (left) + Plus (right) */}
+        <div className="flex items-center gap-3">
+          {/* External Home: يظهر فقط إذا activeTab !== 'dashboard' */}
+          <AnimatePresence>
+            {showExternalHome && (
+              <motion.button
+                key="external-home"
+                initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                aria-label={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                title={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                onClick={() => {
+                  setActiveTab("dashboard");
+                  // optionally close services if open
+                  setServicesOpen(false);
+                }}
+                className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300"
+              >
+                <Home size={20} className="text-gray-700 dark:text-gray-200" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          {/* plus button */}
+          <button
+            aria-expanded={servicesOpen}
+            aria-label={servicesOpen ? (language === "ar" ? "إغلاق" : "Close") : (language === "ar" ? "فتح الخدمات" : "Open services")}
+            onClick={() => setServicesOpen((s) => !s)}
+            className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xl hover:bg-blue-700 transition-transform transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          >
+            {servicesOpen ? <X size={28} /> : <Plus size={28} />}
+          </button>
+        </div>
       </div>
     </>
   );
