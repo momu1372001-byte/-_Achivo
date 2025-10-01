@@ -12,8 +12,9 @@ import {
   Bot,
   Menu,
   Plus,
+  X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 interface Props {
   activeTab: string;
@@ -32,10 +33,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
 }) => {
   const [openMenu, setOpenMenu] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-  const servicesRef = useRef<HTMLDivElement | null>(null);
-  const plusBtnRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
-  // الخدمات
+  // Services: removed "dashboard" so Home icon lives outside the grid
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -45,63 +46,81 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  // Variants للأنيميشن
-  const containerVariants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
-    show: { opacity: 1, y: 0, scale: 1 },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    show: { opacity: 1, scale: 1 },
-  };
-
-  // اغلاق عند الضغط خارج
+  // close on Esc
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        servicesRef.current &&
-        !servicesRef.current.contains(e.target as Node) &&
-        !plusBtnRef.current?.contains(e.target as Node)
-      ) {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
         setServicesOpen(false);
+        setOpenMenu(false);
       }
     }
-
-    function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setServicesOpen(false);
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEsc);
-    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // click outside to close
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!containerRef.current) return;
+      const el = containerRef.current;
+      if (!el.contains(e.target as Node)) {
+        setServicesOpen(false);
+        setOpenMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // motion variants (stagger)
+  const containerVariants = prefersReducedMotion
+    ? {}
+    : {
+        hidden: { opacity: 0, y: 8 },
+        show: { opacity: 1, y: 0, transition: { staggerChildren: 0.04 } },
+      };
+
+  const itemVariants = prefersReducedMotion
+    ? {}
+    : {
+        hidden: { opacity: 0, y: 8, scale: 0.98 },
+        show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 20 } },
+      };
+
+  // helper: whether to show the external Home button
+  const showExternalHome = activeTab !== "dashboard";
 
   return (
     <>
-      {/* زر القائمة العلوية (Settings + AI) */}
+      {/* top-left menu (Settings + AI) */}
       <div className="fixed top-4 left-4 z-50">
         <button
+          aria-expanded={openMenu}
+          aria-label={language === "ar" ? "قائمة" : "Menu"}
           onClick={() => setOpenMenu((s) => !s)}
-          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-          aria-label="menu"
+          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <Menu size={24} className="text-gray-800 dark:text-gray-200" />
         </button>
 
         {openMenu && (
-          <div className="absolute left-0 mt-2 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 mt-2 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+            role="menu"
+            aria-label={language === "ar" ? "قائمة الإعدادات" : "Settings menu"}
+          >
             <button
               onClick={() => {
                 onOpenAI();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
             >
-              <Bot size={20} />
+              <Bot size={18} />
               <span>{language === "ar" ? "المساعد الذكي" : "AI Assistant"}</span>
             </button>
             <button
@@ -109,126 +128,105 @@ const UnifiedBottomNav: React.FC<Props> = ({
                 onOpenSettings();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
             >
-              <Settings size={20} />
+              <Settings size={18} />
               <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
             </button>
-          </div>
+          </motion.div>
         )}
       </div>
 
-      {/* شريط التنقل السفلي */}
-      <div className="fixed bottom-6 w-full px-6 z-50 flex items-center justify-between pointer-events-none">
-        {/* زر + (في الوسط) */}
-        <div className="absolute left-1/2 transform -translate-x-1/2 pointer-events-auto z-50">
-          <div className="relative">
-            <button
-              ref={plusBtnRef}
-              onClick={() => setServicesOpen((s) => !s)}
-              aria-expanded={servicesOpen}
-              aria-haspopup="true"
-              className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-xl hover:bg-blue-600 transition"
-            >
-              <Plus
-                size={30}
-                className={`${servicesOpen ? "rotate-45 transition" : "transition"}`}
-              />
-            </button>
-
-            {/* خلفية شفافة عند فتح الخدمات */}
-            <AnimatePresence>
-              {servicesOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
-                  aria-hidden
-                  onClick={() => setServicesOpen(false)}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* شبكة الخدمات */}
-            
-            
-            {/* شبكة الخدمات */}
-{/* شبكة الخدمات */}
-{/* شبكة الخدمات */}
-<AnimatePresence>
-  {servicesOpen && (
-    <motion.div
-      ref={servicesRef}
-      initial="hidden"
-      animate="show"
-      exit="hidden"
-      variants={containerVariants}
-      transition={{ duration: 0.25 }}
-      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 
-                 w-[min(92vw,500px)] max-h-[60vh] overflow-y-auto"
-    >
-      <div
-        className="
-          bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 
-          grid gap-6 
-          [grid-template-columns:repeat(auto-fit,minmax(90px,1fr))]
-        "
-      >
-        {services.map((srv) => {
-          const Icon = srv.icon;
-          return (
+      {/* bottom center: services grid (on top) + controls row (home + plus) */}
+      <div ref={containerRef} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center">
+        {/* backdrop blur when open */}
+        <AnimatePresence>
+          {servicesOpen && (
             <motion.div
-              key={srv.key}
-              variants={itemVariants}
-              className="flex flex-col items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+              aria-hidden
+              onClick={() => setServicesOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* services card */}
+        <AnimatePresence>
+          {servicesOpen && (
+            <motion.div
+              initial="hidden"
+              animate="show"
+              exit="hidden"
+              variants={containerVariants}
+              transition={{ duration: 0.18 }}
+              className="z-50 mb-4"
             >
-              <button
-                aria-label={srv.label}
-                title={srv.label}
+              <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
+                {services.map((srv) => {
+                  const Icon = srv.icon;
+                  return (
+                    <motion.div key={srv.key} variants={itemVariants} className="flex flex-col items-center">
+                      <button
+                        aria-label={srv.label}
+                        title={srv.label}
+                        onClick={() => {
+                          setActiveTab(srv.key);
+                          setServicesOpen(false);
+                        }}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transform transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 ${
+                          activeTab === srv.key
+                            ? "bg-blue-500 text-white scale-105 shadow-lg"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                        }`}
+                      >
+                        <Icon size={22} />
+                      </button>
+                      <span className="mt-2 text-[11px] text-gray-800 dark:text-gray-200 text-center">{srv.label}</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* controls row: external Home (left) + Plus (right) */}
+        <div className="flex items-center gap-3">
+          {/* External Home: يظهر فقط إذا activeTab !== 'dashboard' */}
+          <AnimatePresence>
+            {showExternalHome && (
+              <motion.button
+                key="external-home"
+                initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                aria-label={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                title={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
                 onClick={() => {
-                  setActiveTab(srv.key);
+                  setActiveTab("dashboard");
+                  // optionally close services if open
                   setServicesOpen(false);
                 }}
-                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all duration-150 ${
-                  activeTab === srv.key
-                    ? "bg-blue-500 text-white scale-105"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-lg"
-                }`}
+                className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300"
               >
-                <Icon size={24} />
-              </button>
-              <span className="mt-3 text-sm text-gray-800 dark:text-gray-200 text-center">
-                {srv.label}
-              </span>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
-  )}
-</AnimatePresence>
+                <Home size={20} className="text-gray-700 dark:text-gray-200" />
+              </motion.button>
+            )}
+          </AnimatePresence>
 
-         
-          </div>
-        </div>
-
-        {/* زر الرئيسية (أقصى اليمين) */}
-        <div className="pointer-events-auto ml-auto">
+          {/* plus button */}
           <button
-            onClick={() => {
-              setActiveTab("dashboard");
-              setServicesOpen(false);
-            }}
-            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl transition ${
-              activeTab === "dashboard"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-            }`}
-            aria-label="home"
+            aria-expanded={servicesOpen}
+            aria-label={servicesOpen ? (language === "ar" ? "إغلاق" : "Close") : (language === "ar" ? "فتح الخدمات" : "Open services")}
+            onClick={() => setServicesOpen((s) => !s)}
+            className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xl hover:bg-blue-700 transition-transform transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300"
           >
-            <Home size={28} />
+            {servicesOpen ? <X size={28} /> : <Plus size={28} />}
           </button>
         </div>
       </div>
