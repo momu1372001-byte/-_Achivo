@@ -35,6 +35,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
   const servicesRef = useRef<HTMLDivElement | null>(null);
   const plusBtnRef = useRef<HTMLButtonElement | null>(null);
 
+  // إعداد الخدمات
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -44,26 +45,47 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  // اغلاق عند الضغط خارج الحاوية او الضغط على Escape
+  // ثابتات الشبكة/الخلايا
+  const CELL_SIZE = 96; // عرض كل خلية (px) — يمنع تصغير الأيقونة
+  const GAP = 16; // فجوة بين الخلايا (px)
+  const MAX_COLS = 3; // أقصى عدد أعمدة نريده
+
+  const [cols, setCols] = useState<number>(MAX_COLS);
+
+  // نحسب عدد الأعمدة المتاحة بناءً على عرض الشاشة (90vw cap)
+  useEffect(() => {
+    function calcCols() {
+      if (typeof window === "undefined") return;
+      const avail = Math.min(window.innerWidth * 0.9, 420); // نحتفظ بحد أقصى للحاوية
+      // نريد أن نعرف كام خلية (CELL_SIZE) ممكن وضعها مع الفجوات داخل 'avail'
+      const possible = Math.floor((avail + GAP) / (CELL_SIZE + GAP)); // +GAP لاحتساب الفراغ بشكل صحيح
+      const nextCols = Math.max(1, Math.min(MAX_COLS, possible));
+      setCols(nextCols);
+    }
+
+    calcCols();
+    window.addEventListener("resize", calcCols);
+    return () => window.removeEventListener("resize", calcCols);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // اغلاق عند الضغط خارج الحاوية او Escape
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       const target = e.target as Node;
-      if (servicesOpen) {
-        if (
-          servicesRef.current &&
-          !servicesRef.current.contains(target) &&
-          plusBtnRef.current &&
-          !plusBtnRef.current.contains(target)
-        ) {
-          setServicesOpen(false);
-        }
+      if (!servicesOpen) return;
+      if (
+        servicesRef.current &&
+        !servicesRef.current.contains(target) &&
+        plusBtnRef.current &&
+        !plusBtnRef.current.contains(target)
+      ) {
+        setServicesOpen(false);
       }
     }
-
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setServicesOpen(false);
     }
-
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -112,10 +134,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
       {/* شريط التنقل السفلي */}
       <div className="fixed bottom-6 w-full px-6 z-50 flex items-center justify-between pointer-events-none">
-        {/* نسمح فقط للأزرار بالتفاعل داخل هذا الشريط */}
+        {/* عنصر فاصل على اليسار (للحفاظ على المساحة) */}
         <div className="pointer-events-auto" />
 
-        {/* زر + في المنتصف */}
+        {/* زر + (في الوسط) */}
         <div className="absolute left-1/2 transform -translate-x-1/2 pointer-events-auto z-50">
           <div className="relative">
             <button
@@ -131,7 +153,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
               />
             </button>
 
-            {/* حاوية الخدمات: متمركزة تماماً وفوق زر + */}
+            {/* حاوية الخدمات: نحسب الأعمدة ديناميكياً ولا نسمح بالتصغير */}
             <AnimatePresence>
               {servicesOpen && (
                 <motion.div
@@ -140,25 +162,25 @@ const UnifiedBottomNav: React.FC<Props> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 12 }}
                   transition={{ duration: 0.18 }}
-                  // style grid مع min width لكل عنصر حتى لا يتكدس
+                  // عرض الحاوية محدود بـ 90vw أو 420px
                   style={{
-                    width: "min(90vw, 420px)",
+                    width: undefined, // نترك العرض يحسبه محتوى الشبكة أدناه
+                    maxWidth: "min(90vw, 420px)",
                     maxHeight: "calc(100vh - 220px)",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))",
                   }}
                   className="absolute bottom-24 left-1/2 transform -translate-x-1/2
                              bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4
                              z-50 overflow-y-auto"
                 >
-                  {/* استخدام شبكة CSS داخلية (مما يسمح بالـ auto-fit عبر style) */}
+                  {/* شبكة محسوبة بالأعمدة الثابتة (كل خلية حجم ثابت) */}
                   <div
                     style={{
                       display: "grid",
-                      gap: 16,
-                      gridTemplateColumns: "inherit",
-                      justifyItems: "center",
+                      gap: GAP,
+                      gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
+                      justifyContent: "center",
+                      // padding داخل الحاوية يحسب تلقائياً عبر p-4
                     }}
-                    className="w-full"
                   >
                     {services.map((srv) => {
                       const Icon = srv.icon;
