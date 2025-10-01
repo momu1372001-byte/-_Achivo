@@ -1,3 +1,4 @@
+// src/components/UnifiedBottomNav.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   Home,
@@ -18,17 +19,16 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 interface Props {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onOpenSettings?: () => void;
-  onOpenAI?: () => void;
+  onOpenSettings: () => void;
+  onOpenAI: () => void;
   language?: "ar" | "en";
 }
 
 const UnifiedBottomNav: React.FC<Props> = ({
   activeTab,
   setActiveTab,
-  // ✅ دوال افتراضية عشان تشتغل حتى لو ما تبعتش من الـ parent
-  onOpenSettings = () => alert("⚙️ فتح الإعدادات"),
-  onOpenAI = () => alert("🤖 فتح المساعد الذكي"),
+  onOpenSettings,
+  onOpenAI,
   language = "ar",
 }) => {
   const [openMenu, setOpenMenu] = useState(false);
@@ -36,7 +36,6 @@ const UnifiedBottomNav: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
-  // الخدمات
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -46,24 +45,11 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setServicesOpen(false);
-        setOpenMenu(false);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
+  // إغلاق القوائم عند الضغط خارجها
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (!containerRef.current) return;
-      const el = containerRef.current;
-      if (!el.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setServicesOpen(false);
-        setOpenMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -93,15 +79,11 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
   return (
     <>
-      {/* زر القائمة (الإعدادات + المساعد الذكي) - أسفل يسار */}
+      {/* زر القائمة (المساعد الذكي + الإعدادات) - أسفل يسار */}
       <div className="fixed bottom-6 left-4 z-[9999]">
         <button
-          aria-expanded={openMenu}
-          aria-label={language === "ar" ? "قائمة" : "Menu"}
-          onClick={() => setOpenMenu((s) => !s)}
-          className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 
-                     dark:hover:bg-gray-600 transition shadow-md 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={() => setOpenMenu(!openMenu)}
+          className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-md"
         >
           <Menu size={24} className="text-gray-800 dark:text-gray-200" />
         </button>
@@ -111,36 +93,28 @@ const UnifiedBottomNav: React.FC<Props> = ({
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.12 }}
-            className="absolute bottom-16 left-0 w-44 
-                       bg-white dark:bg-gray-800 shadow-lg rounded-lg 
-                       border border-gray-200 dark:border-gray-700 overflow-hidden 
-                       z-[10000]"
-            role="menu"
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-16 left-0 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
           >
-            {/* زر المساعد الذكي */}
+            {/* المساعد الذكي */}
             <button
               onClick={() => {
                 onOpenAI();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 
-                         hover:bg-gray-50 dark:hover:bg-gray-700 
-                         transition text-sm"
+              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
             >
               <Bot size={18} />
               <span>{language === "ar" ? "المساعد الذكي" : "AI Assistant"}</span>
             </button>
 
-            {/* زر الإعدادات */}
+            {/* الإعدادات */}
             <button
               onClick={() => {
                 onOpenSettings();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 
-                         hover:bg-gray-50 dark:hover:bg-gray-700 
-                         transition text-sm"
+              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
             >
               <Settings size={18} />
               <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
@@ -149,7 +123,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
         )}
       </div>
 
-      {/* خدمات + زر البلس */}
+      {/* شبكة الخدمات + زر البلس */}
       <div
         ref={containerRef}
         className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex flex-col items-center"
@@ -157,25 +131,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm"
-              aria-hidden
-              onClick={() => setServicesOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {servicesOpen && (
-            <motion.div
               initial="hidden"
               animate="show"
               exit="hidden"
               variants={containerVariants}
-              transition={{ duration: 0.18 }}
               className="z-40 mb-4"
             >
               <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 
@@ -190,20 +149,16 @@ const UnifiedBottomNav: React.FC<Props> = ({
                       className="flex flex-col items-center"
                     >
                       <button
-                        aria-label={srv.label}
-                        title={srv.label}
                         onClick={() => {
                           setActiveTab(srv.key);
                           setServicesOpen(false);
                         }}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm 
-                                    transform transition-all duration-150 
-                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 
-                                    ${
-                                      activeTab === srv.key
-                                        ? "bg-blue-500 text-white scale-105 shadow-lg"
-                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
-                                    }`}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-all duration-150
+                          ${
+                            activeTab === srv.key
+                              ? "bg-blue-500 text-white scale-105"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                          }`}
                       >
                         <Icon size={22} />
                       </button>
@@ -220,21 +175,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
         {/* زر البلس */}
         <button
-          aria-expanded={servicesOpen}
-          aria-label={
-            servicesOpen
-              ? language === "ar"
-                ? "إغلاق"
-                : "Close"
-              : language === "ar"
-              ? "فتح الخدمات"
-              : "Open services"
-          }
-          onClick={() => setServicesOpen((s) => !s)}
-          className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center 
-                     justify-center shadow-2xl hover:bg-blue-700 
-                     transition-transform transform active:scale-95 
-                     focus:outline-none focus:ring-4 focus:ring-blue-300"
+          onClick={() => setServicesOpen(!servicesOpen)}
+          className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xl hover:bg-blue-700 transition-transform active:scale-95"
         >
           {servicesOpen ? <X size={28} /> : <Plus size={28} />}
         </button>
@@ -249,15 +191,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 22 }}
-            aria-label={language === "ar" ? "العودة للرئيسية" : "Back to Home"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setServicesOpen(false);
-            }}
-            className="fixed bottom-6 right-4 w-12 h-12 rounded-full 
-                       bg-white dark:bg-gray-700 flex items-center justify-center 
-                       shadow-md hover:scale-105 transition-transform 
-                       focus:outline-none focus:ring-2 focus:ring-blue-300 z-50"
+            onClick={() => setActiveTab("dashboard")}
+            className="fixed bottom-6 right-4 w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform"
           >
             <Home size={20} className="text-gray-700 dark:text-gray-200" />
           </motion.button>
