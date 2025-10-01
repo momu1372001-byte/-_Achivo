@@ -35,7 +35,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
   const servicesRef = useRef<HTMLDivElement | null>(null);
   const plusBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // إعداد الخدمات
+  // الخدمات
   const services = [
     { key: "tasks", label: language === "ar" ? "المهام" : "Tasks", icon: ListTodo },
     { key: "calendar", label: language === "ar" ? "التقويم" : "Calendar", icon: Calendar },
@@ -45,54 +45,40 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
   ];
 
-  // ثابتات الشبكة/الخلايا
-  const CELL_SIZE = 96; // عرض كل خلية (px) — يمنع تصغير الأيقونة
-  const GAP = 16; // فجوة بين الخلايا (px)
-  const MAX_COLS = 3; // أقصى عدد أعمدة نريده
+  // Variants للأنيميشن
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    show: { opacity: 1, y: 0, scale: 1 },
+  };
 
-  const [cols, setCols] = useState<number>(MAX_COLS);
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    show: { opacity: 1, scale: 1 },
+  };
 
-  // نحسب عدد الأعمدة المتاحة بناءً على عرض الشاشة (90vw cap)
+  // اغلاق عند الضغط خارج
   useEffect(() => {
-    function calcCols() {
-      if (typeof window === "undefined") return;
-      const avail = Math.min(window.innerWidth * 0.9, 420); // نحتفظ بحد أقصى للحاوية
-      // نريد أن نعرف كام خلية (CELL_SIZE) ممكن وضعها مع الفجوات داخل 'avail'
-      const possible = Math.floor((avail + GAP) / (CELL_SIZE + GAP)); // +GAP لاحتساب الفراغ بشكل صحيح
-      const nextCols = Math.max(1, Math.min(MAX_COLS, possible));
-      setCols(nextCols);
-    }
-
-    calcCols();
-    window.addEventListener("resize", calcCols);
-    return () => window.removeEventListener("resize", calcCols);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // اغلاق عند الضغط خارج الحاوية او Escape
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (!servicesOpen) return;
+    function handleClickOutside(e: MouseEvent) {
       if (
         servicesRef.current &&
-        !servicesRef.current.contains(target) &&
-        plusBtnRef.current &&
-        !plusBtnRef.current.contains(target)
+        !servicesRef.current.contains(e.target as Node) &&
+        !plusBtnRef.current?.contains(e.target as Node)
       ) {
         setServicesOpen(false);
       }
     }
-    function onKey(e: KeyboardEvent) {
+
+    function handleEsc(e: KeyboardEvent) {
       if (e.key === "Escape") setServicesOpen(false);
     }
-    document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKey);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
     return () => {
-      document.removeEventListener("click", onDocClick);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
     };
-  }, [servicesOpen]);
+  }, []);
 
   return (
     <>
@@ -134,9 +120,6 @@ const UnifiedBottomNav: React.FC<Props> = ({
 
       {/* شريط التنقل السفلي */}
       <div className="fixed bottom-6 w-full px-6 z-50 flex items-center justify-between pointer-events-none">
-        {/* عنصر فاصل على اليسار (للحفاظ على المساحة) */}
-        <div className="pointer-events-auto" />
-
         {/* زر + (في الوسط) */}
         <div className="absolute left-1/2 transform -translate-x-1/2 pointer-events-auto z-50">
           <div className="relative">
@@ -153,57 +136,61 @@ const UnifiedBottomNav: React.FC<Props> = ({
               />
             </button>
 
-            {/* حاوية الخدمات: نحسب الأعمدة ديناميكياً ولا نسمح بالتصغير */}
+            {/* خلفية شفافة عند فتح الخدمات */}
+            <AnimatePresence>
+              {servicesOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+                  aria-hidden
+                  onClick={() => setServicesOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* شبكة الخدمات */}
             <AnimatePresence>
               {servicesOpen && (
                 <motion.div
                   ref={servicesRef}
-                  initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                  transition={{ duration: 0.18 }}
-                  // عرض الحاوية محدود بـ 90vw أو 420px
-                  style={{
-                    width: undefined, // نترك العرض يحسبه محتوى الشبكة أدناه
-                    maxWidth: "min(90vw, 420px)",
-                    maxHeight: "calc(100vh - 220px)",
-                  }}
-                  className="absolute bottom-24 left-1/2 transform -translate-x-1/2
-                             bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4
-                             z-50 overflow-y-auto"
+                  initial="hidden"
+                  animate="show"
+                  exit="hidden"
+                  variants={containerVariants}
+                  transition={{ duration: 0.25 }}
+                  className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50"
                 >
-                  {/* شبكة محسوبة بالأعمدة الثابتة (كل خلية حجم ثابت) */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: GAP,
-                      gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
-                      justifyContent: "center",
-                      // padding داخل الحاوية يحسب تلقائياً عبر p-4
-                    }}
-                  >
+                  <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
                     {services.map((srv) => {
                       const Icon = srv.icon;
                       return (
-                        <div key={srv.key} className="flex flex-col items-center">
+                        <motion.div
+                          key={srv.key}
+                          variants={itemVariants}
+                          className="flex flex-col items-center"
+                        >
                           <button
+                            aria-label={srv.label}
+                            title={srv.label}
                             onClick={() => {
                               setActiveTab(srv.key);
                               setServicesOpen(false);
                             }}
-                            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md transition
-                              ${activeTab === srv.key
-                                ? "bg-blue-500 text-white"
-                                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                              }`}
-                            aria-label={srv.key}
+                            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 ${
+                              activeTab === srv.key
+                                ? "bg-blue-500 text-white scale-105 shadow-lg"
+                                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                            }`}
                           >
                             <Icon size={22} />
                           </button>
-                          <span className="mt-2 text-sm text-gray-800 dark:text-gray-200 text-center">
+                          <span className="mt-2 text-xs text-gray-800 dark:text-gray-200 text-center">
                             {srv.label}
                           </span>
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -214,7 +201,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
         </div>
 
         {/* زر الرئيسية (أقصى اليمين) */}
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto ml-auto">
           <button
             onClick={() => {
               setActiveTab("dashboard");
