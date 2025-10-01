@@ -152,51 +152,73 @@ const UnifiedBottomNav: React.FC<Props> = ({
             </AnimatePresence>
 
             {/* شبكة الخدمات */}
-            <AnimatePresence>
-              {servicesOpen && (
-                <motion.div
-                  ref={servicesRef}
-                  initial="hidden"
-                  animate="show"
-                  exit="hidden"
-                  variants={containerVariants}
-                  transition={{ duration: 0.25 }}
-                  className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50"
-                >
-                  <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
-                    {services.map((srv) => {
-                      const Icon = srv.icon;
-                      return (
-                        <motion.div
-                          key={srv.key}
-                          variants={itemVariants}
-                          className="flex flex-col items-center"
-                        >
-                          <button
-                            aria-label={srv.label}
-                            title={srv.label}
-                            onClick={() => {
-                              setActiveTab(srv.key);
-                              setServicesOpen(false);
-                            }}
-                            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 ${
-                              activeTab === srv.key
-                                ? "bg-blue-500 text-white scale-105 shadow-lg"
-                                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
-                            }`}
-                          >
-                            <Icon size={22} />
-                          </button>
-                          <span className="mt-2 text-xs text-gray-800 dark:text-gray-200 text-center">
-                            {srv.label}
-                          </span>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            
+            
+            {/* شبكة الخدمات */}
+<AnimatePresence>
+  {servicesOpen && (
+    <motion.div
+      ref={servicesRef}
+      initial="hidden"
+      animate="show"
+      exit="hidden"
+      variants={containerVariants}
+      transition={{ duration: 0.25 }}
+      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50"
+    >
+      <div
+        className="
+          bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 
+          grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 
+          w-[min(92vw,720px)] 
+          max-h-[70vh] overflow-y-auto
+        "
+      >
+        {services.map((srv) => {
+          const Icon = srv.icon;
+          return (
+            <motion.div
+              key={srv.key}
+              variants={itemVariants}
+              className="flex flex-col items-center"
+            >
+              <button
+                aria-label={srv.label}
+                title={srv.label}
+                onClick={() => {
+                  setActiveTab(srv.key);
+                  setServicesOpen(false);
+                }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 ${
+                  activeTab === srv.key
+                    ? "bg-blue-500 text-white scale-105 shadow-lg"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                }`}
+              >
+                <Icon size={22} />
+              </button>
+              <span className="mt-2 text-xs text-gray-800 dark:text-gray-200 text-center">
+                {srv.label}
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
+            
+            
+         
+         
+         
+         
+         
+         
+         
+         
+         
           </div>
         </div>
 
