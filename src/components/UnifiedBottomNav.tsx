@@ -155,6 +155,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
             
             
             {/* شبكة الخدمات */}
+{/* شبكة الخدمات */}
 <AnimatePresence>
   {servicesOpen && (
     <motion.div
@@ -171,7 +172,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
           bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 
           grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 
           w-[min(92vw,720px)] 
-          max-h-[70vh] overflow-y-auto
+          max-h-[60vh] overflow-y-auto
+          origin-bottom transform translate-y-full
         "
       >
         {services.map((srv) => {
