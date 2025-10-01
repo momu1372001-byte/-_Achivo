@@ -156,6 +156,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
             
             {/* شبكة الخدمات */}
 {/* شبكة الخدمات */}
+{/* شبكة الخدمات */}
 <AnimatePresence>
   {servicesOpen && (
     <motion.div
@@ -165,15 +166,13 @@ const UnifiedBottomNav: React.FC<Props> = ({
       exit="hidden"
       variants={containerVariants}
       transition={{ duration: 0.25 }}
-      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50"
+      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 
+                 w-[min(92vw,500px)] max-h-[60vh] overflow-y-auto"
     >
       <div
         className="
-          bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-4 
-          grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 
-          w-[min(92vw,720px)] 
-          max-h-[60vh] overflow-y-auto
-          origin-bottom transform translate-y-full
+          bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 
+          grid grid-cols-3 sm:grid-cols-4 gap-y-6 gap-x-6
         "
       >
         {services.map((srv) => {
@@ -191,15 +190,15 @@ const UnifiedBottomNav: React.FC<Props> = ({
                   setActiveTab(srv.key);
                   setServicesOpen(false);
                 }}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 ${
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all duration-150 ${
                   activeTab === srv.key
-                    ? "bg-blue-500 text-white scale-105 shadow-lg"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                    ? "bg-blue-500 text-white scale-105"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-lg"
                 }`}
               >
-                <Icon size={22} />
+                <Icon size={24} />
               </button>
-              <span className="mt-2 text-xs text-gray-800 dark:text-gray-200 text-center">
+              <span className="mt-3 text-sm text-gray-800 dark:text-gray-200 text-center">
                 {srv.label}
               </span>
             </motion.div>
@@ -210,7 +209,6 @@ const UnifiedBottomNav: React.FC<Props> = ({
   )}
 </AnimatePresence>
 
-            
             
          
          
