@@ -94,42 +94,55 @@ const UnifiedBottomNav: React.FC<Props> = ({
               />
             </button>
 
-            {/* شبكة الأيقونات عند الفتح */}
-            <AnimatePresence>
-              {servicesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.25 }}
-                  className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 grid grid-cols-3 gap-4"
-                >
-                  {services.map((srv) => {
-                    const Icon = srv.icon;
-                    return (
-                      <div key={srv.key} className="flex flex-col items-center">
-                        <button
-                          onClick={() => {
-                            setActiveTab(srv.key);
-                            setServicesOpen(false);
-                          }}
-                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md transition ${
-                            activeTab === srv.key
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                          }`}
-                        >
-                          <Icon size={22} />
-                        </button>
-                        <span className="mt-1 text-xs text-gray-800 dark:text-gray-200">
-                          {srv.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
+           {/* شبكة الأيقونات عند الفتح */}
+<AnimatePresence>
+  {servicesOpen && (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.25 }}
+      className="absolute bottom-20 left-1/2 transform -translate-x-1/2 
+                 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 
+                 w-[90vw] max-w-md grid grid-cols-3 gap-6"
+    >
+      {services.map((srv) => {
+        const Icon = srv.icon;
+        return (
+          <div key={srv.key} className="flex flex-col items-center">
+            <button
+              onClick={() => {
+                setActiveTab(srv.key);
+                setServicesOpen(false);
+              }}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md transition ${
+                activeTab === srv.key
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <Icon size={22} />
+            </button>
+            <span className="mt-2 text-xs text-gray-800 dark:text-gray-200 text-center">
+              {srv.label}
+            </span>
+          </div>
+        );
+      })}
+    </motion.div>
+  )}
+</AnimatePresence>
+
+           
+           
+          
+          
+          
+          
+          
+          
+          
+          
           </div>
         </div>
 
