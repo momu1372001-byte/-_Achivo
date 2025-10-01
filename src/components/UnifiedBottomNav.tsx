@@ -80,7 +80,12 @@ const UnifiedBottomNav: React.FC<Props> = ({
     ? {}
     : {
         hidden: { opacity: 0, y: 8, scale: 0.98 },
-        show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 20 } },
+        show: {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: { type: "spring", stiffness: 260, damping: 20 },
+        },
       };
 
   const showExternalHome = activeTab !== "dashboard";
@@ -88,12 +93,14 @@ const UnifiedBottomNav: React.FC<Props> = ({
   return (
     <>
       {/* زر القائمة (الإعدادات + الذكاء الاصطناعي) - أسفل يسار */}
-      <div className="fixed bottom-6 left-4 z-50">
+      <div className="fixed bottom-6 left-4 z-[9999]">
         <button
           aria-expanded={openMenu}
           aria-label={language === "ar" ? "قائمة" : "Menu"}
           onClick={() => setOpenMenu((s) => !s)}
-          className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 
+                     dark:hover:bg-gray-600 transition shadow-md 
+                     focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <Menu size={24} className="text-gray-800 dark:text-gray-200" />
         </button>
@@ -104,25 +111,35 @@ const UnifiedBottomNav: React.FC<Props> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.12 }}
-            className="absolute bottom-16 left-0 w-44 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="absolute bottom-16 left-0 w-44 
+                       bg-white dark:bg-gray-800 shadow-lg rounded-lg 
+                       border border-gray-200 dark:border-gray-700 overflow-hidden 
+                       z-[10000]"
             role="menu"
           >
+            {/* زر المساعد الذكي */}
             <button
               onClick={() => {
-                onOpenAI(); // تنفيذ الذكاء الاصطناعي
+                if (onOpenAI) onOpenAI();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+              className="flex items-center gap-2 w-full px-4 py-2 
+                         hover:bg-gray-50 dark:hover:bg-gray-700 
+                         transition text-sm"
             >
               <Bot size={18} />
               <span>{language === "ar" ? "المساعد الذكي" : "AI Assistant"}</span>
             </button>
+
+            {/* زر الإعدادات */}
             <button
               onClick={() => {
-                onOpenSettings(); // تنفيذ الإعدادات
+                if (onOpenSettings) onOpenSettings();
                 setOpenMenu(false);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+              className="flex items-center gap-2 w-full px-4 py-2 
+                         hover:bg-gray-50 dark:hover:bg-gray-700 
+                         transition text-sm"
             >
               <Settings size={18} />
               <span>{language === "ar" ? "الإعدادات" : "Settings"}</span>
@@ -132,7 +149,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
       </div>
 
       {/* خدمات + زر البلس */}
-      <div ref={containerRef} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex flex-col items-center">
+      <div
+        ref={containerRef}
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex flex-col items-center"
+      >
         <AnimatePresence>
           {servicesOpen && (
             <motion.div
@@ -157,11 +177,17 @@ const UnifiedBottomNav: React.FC<Props> = ({
               transition={{ duration: 0.18 }}
               className="z-40 mb-4"
             >
-              <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 w-[min(92vw,720px)]">
+              <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-4 
+                              grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 
+                              w-[min(92vw,720px)]">
                 {services.map((srv) => {
                   const Icon = srv.icon;
                   return (
-                    <motion.div key={srv.key} variants={itemVariants} className="flex flex-col items-center">
+                    <motion.div
+                      key={srv.key}
+                      variants={itemVariants}
+                      className="flex flex-col items-center"
+                    >
                       <button
                         aria-label={srv.label}
                         title={srv.label}
@@ -169,15 +195,20 @@ const UnifiedBottomNav: React.FC<Props> = ({
                           setActiveTab(srv.key);
                           setServicesOpen(false);
                         }}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm transform transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 ${
-                          activeTab === srv.key
-                            ? "bg-blue-500 text-white scale-105 shadow-lg"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
-                        }`}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm 
+                                    transform transition-all duration-150 
+                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 
+                                    ${
+                                      activeTab === srv.key
+                                        ? "bg-blue-500 text-white scale-105 shadow-lg"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:scale-105 hover:shadow-md"
+                                    }`}
                       >
                         <Icon size={22} />
                       </button>
-                      <span className="mt-2 text-[11px] text-gray-800 dark:text-gray-200 text-center">{srv.label}</span>
+                      <span className="mt-2 text-[11px] text-gray-800 dark:text-gray-200 text-center">
+                        {srv.label}
+                      </span>
                     </motion.div>
                   );
                 })}
@@ -189,9 +220,20 @@ const UnifiedBottomNav: React.FC<Props> = ({
         {/* زر البلس */}
         <button
           aria-expanded={servicesOpen}
-          aria-label={servicesOpen ? (language === "ar" ? "إغلاق" : "Close") : (language === "ar" ? "فتح الخدمات" : "Open services")}
+          aria-label={
+            servicesOpen
+              ? language === "ar"
+                ? "إغلاق"
+                : "Close"
+              : language === "ar"
+              ? "فتح الخدمات"
+              : "Open services"
+          }
           onClick={() => setServicesOpen((s) => !s)}
-          className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xl hover:bg-blue-700 transition-transform transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center 
+                     justify-center shadow-2xl hover:bg-blue-700 
+                     transition-transform transform active:scale-95 
+                     focus:outline-none focus:ring-4 focus:ring-blue-300"
         >
           {servicesOpen ? <X size={28} /> : <Plus size={28} />}
         </button>
@@ -211,7 +253,10 @@ const UnifiedBottomNav: React.FC<Props> = ({
               setActiveTab("dashboard");
               setServicesOpen(false);
             }}
-            className="fixed bottom-6 right-4 w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300 z-50"
+            className="fixed bottom-6 right-4 w-12 h-12 rounded-full 
+                       bg-white dark:bg-gray-700 flex items-center justify-center 
+                       shadow-md hover:scale-105 transition-transform 
+                       focus:outline-none focus:ring-2 focus:ring-blue-300 z-50"
           >
             <Home size={20} className="text-gray-700 dark:text-gray-200" />
           </motion.button>
