@@ -93,8 +93,6 @@ const UnifiedBottomNav: React.FC<Props> = ({
                 className={`${servicesOpen ? "rotate-45 transition" : "transition"}`}
               />
             </button>
-
-           {/* شبكة الأيقونات عند الفتح */}
 {/* شبكة الأيقونات عند الفتح */}
 <AnimatePresence>
   {servicesOpen && (
@@ -105,7 +103,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
       transition={{ duration: 0.25 }}
       className="absolute bottom-24 left-1/2 transform -translate-x-1/2
                  bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6
-                 w-[90vw] max-w-md grid grid-cols-3 gap-6"
+                 w-full max-w-md grid grid-cols-3 gap-6 justify-items-center"
     >
       {services.map((srv) => {
         const Icon = srv.icon;
@@ -133,6 +131,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
     </motion.div>
   )}
 </AnimatePresence>
+
 
            
            
