@@ -95,16 +95,17 @@ const UnifiedBottomNav: React.FC<Props> = ({
             </button>
 
            {/* شبكة الأيقونات عند الفتح */}
+{/* شبكة الأيقونات عند الفتح */}
 <AnimatePresence>
   {servicesOpen && (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 20 }}
       transition={{ duration: 0.25 }}
-      className="absolute bottom-20 left-1/2 transform -translate-x-1/2 
-                 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 
-                 w-[90vw] max-w-md grid grid-cols-3 gap-6"
+      className="absolute bottom-20 left-1/2 transform -translate-x-1/2
+                 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4
+                 w-full max-w-sm grid grid-cols-3 gap-4"
     >
       {services.map((srv) => {
         const Icon = srv.icon;
@@ -132,6 +133,7 @@ const UnifiedBottomNav: React.FC<Props> = ({
     </motion.div>
   )}
 </AnimatePresence>
+
 
            
            
