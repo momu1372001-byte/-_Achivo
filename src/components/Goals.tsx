@@ -1,6 +1,10 @@
 // src/components/Goals.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Edit3, Trash2, CheckCircle, Bell, X, Calendar } from "lucide-react";
+import { LocalNotifications } from '@capacitor/local-notifications';
+
+
+
 
 /** نوع الهدف محلي (تكيّف مع ملف types.ts لو رغبت باستبدال) */
 type GoalItem = {
@@ -84,7 +88,37 @@ const tr = {
 
 export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
+  
+  
+    // 🟢 اطلب إذن الإشعارات من المستخدم
+  async function requestPermission() {
+    const granted = await LocalNotifications.requestPermissions();
+    if (granted.display === 'granted') {
+      console.log("✅ تم منح إذن الإشعارات");
+    } else {
+      console.log("❌ تم رفض إذن الإشعارات");
+    }
+  }
+
+  // 🟢 إرسال إشعار تجريبي بعد 5 ثواني
+  async function sendTestNotification() {
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title: "🚀 استعد للإنجاز",
+          body: "اليوم فرصة جديدة لتحقيق أهدافك 💪",
+          id: 1,
+          schedule: { at: new Date(Date.now() + 1000 * 5) }, // بعد 5 ثواني
+          sound: "default",
+        },
+      ],
+    });
+  }
+
+  
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
+
+
 
   // toast tied to specific goal and specific button target
   const [toast, setToast] = useState<
@@ -317,6 +351,26 @@ export default function Goals(props: Props) {
           </button>
         </div>
       </div>
+
+
+{/* أزرار اختبار الإشعارات */}
+<div className="flex gap-2 mb-4">
+  <button
+    onClick={requestPermission}
+    className="bg-blue-600 text-white px-3 py-2 rounded"
+  >
+    طلب إذن الإشعارات
+  </button>
+
+  <button
+    onClick={sendTestNotification}
+    className="bg-green-600 text-white px-3 py-2 rounded"
+  >
+    إرسال إشعار تجريبي
+  </button>
+</div>
+
+
 
       {/* list */}
       {list.length === 0 ? (
