@@ -3,10 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Edit3, Trash2, CheckCircle, Bell, X, Calendar } from "lucide-react";
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-
-
-
-/** نوع الهدف محلي (تكيّف مع ملف types.ts لو رغبت باستبدال) */
 type GoalItem = {
   id: string;
   title: string;
@@ -14,7 +10,7 @@ type GoalItem = {
   startDate?: string; // "YYYY-MM-DD"
   endDate?: string; // "YYYY-MM-DD"
   notifyTime?: string; // "HH:MM"
-  completedDays?: string[]; // ["2025-09-28", ...]
+  completedDays?: string[];
   milestones?: { id: string; title: string; completed?: boolean }[];
   updatedAt?: number;
   [k: string]: any;
@@ -46,7 +42,7 @@ const tr = {
     cancel: "إلغاء",
     delete: "حذف",
     markToday: "وضع علامة اليوم",
-    alreadyMarked: "  لقد سجّلت إنجاز اليوم بالفعل",
+    alreadyMarked: "لقد سجّلت إنجاز اليوم بالفعل",
     noGoals: "لا توجد أهداف بعد",
     testNotify: "جرّب التنبيه",
     deleteConfirm: "هل تريد حذف هذا الهدف؟",
@@ -56,7 +52,7 @@ const tr = {
     updated: "تم تحديث الهدف",
     deleted: "تم حذف الهدف",
     notifyDenied: "تم رفض أذونات الإشعارات",
-    notifyNotSupported: "الإشعارات",
+    notifyNotSupported: "الإشعارات غير مدعومة",
   },
   en: {
     header: "Goals",
@@ -88,9 +84,10 @@ const tr = {
 
 export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
-  
-  
-    // 🟢 اطلب إذن الإشعارات من المستخدم
+
+  const t = (k: keyof typeof tr["ar"]) => tr[language][k];
+
+  // 🟢 طلب إذن الإشعارات
   async function requestPermission() {
     const granted = await LocalNotifications.requestPermissions();
     if (granted.display === 'granted') {
@@ -100,7 +97,7 @@ export default function Goals(props: Props) {
     }
   }
 
-  // 🟢 إرسال إشعار تجريبي بعد 5 ثواني
+  // 🟢 إشعار تجريبي
   async function sendTestNotification() {
     await LocalNotifications.schedule({
       notifications: [
@@ -115,29 +112,32 @@ export default function Goals(props: Props) {
     });
   }
 
-  
-  const t = (k: keyof typeof tr["ar"]) => tr[language][k];
+  // 🟢 إشعار تحفيزي يومي (9 صباحًا)
+  async function scheduleDailyMotivation() {
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title: "🔥 اشحن طاقتك",
+          body: "اليوم فرصة جديدة للإنجاز 🚀",
+          id: 9999,
+          schedule: {
+            repeats: true,
+            every: 'day',
+            on: { hour: 9, minute: 0 },
+          },
+          sound: "default",
+        },
+      ],
+    });
+  }
 
+  useEffect(() => {
+    requestPermission();
+    scheduleDailyMotivation();
+  }, []);
 
-
-  // toast tied to specific goal and specific button target
-  const [toast, setToast] = useState<
-    | { goalId: string; text: string; kind?: "info" | "success" | "warn"; target?: "check" | "bell" | "global" }
-    | null
-  >(null);
-
-  const showGoalToast = (
-    goalId: string,
-    text: string,
-    kind: "info" | "success" | "warn" = "info",
-    target: "check" | "bell" | "global" = "global"
-  ) => {
-    setToast({ goalId, text, kind, target });
-    // auto-clear only this toast after 2.2s
-    window.setTimeout(() => {
-      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text && cur.target === target ? null : cur));
-    }, 2200);
-  };
+  // Toast
+  const [toast, setToast] = useState<any>(null);
 
   // fallback local storage
   const [fallbackGoals, setFallbackGoals] = useState<GoalItem[]>(() => {
@@ -151,9 +151,7 @@ export default function Goals(props: Props) {
   useEffect(() => {
     try {
       localStorage.setItem(FALLBACK_KEY, JSON.stringify(fallbackGoals));
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, [fallbackGoals]);
 
   const goals = parentGoals && parentGoals.length > 0 ? parentGoals : fallbackGoals;
@@ -177,7 +175,6 @@ export default function Goals(props: Props) {
     const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return Math.max(1, diff + 1);
   };
-
   const calcProgress = (g: GoalItem) => {
     if (!g.startDate || !g.endDate) return 0;
     const total = daysBetweenInclusive(g.startDate, g.endDate);
@@ -185,7 +182,6 @@ export default function Goals(props: Props) {
     return Math.min(100, Math.round((done / total) * 100));
   };
 
-  // form defaults
   const defaultDuration = 30;
   const emptyForm = {
     title: "",
@@ -197,46 +193,28 @@ export default function Goals(props: Props) {
   };
   const [form, setForm] = useState(() => ({ ...emptyForm }));
 
-  // sync duration -> endDate
   useEffect(() => {
     const dur = parseInt(form.duration || "0", 10);
     if (!Number.isNaN(dur) && dur > 0) {
       const newEnd = addDaysToIso(form.startDate || isoToday(), dur - 1);
       setForm((f) => ({ ...f, endDate: newEnd }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.duration, form.startDate]);
 
-  // CRUD helpers
+  // CRUD
   const addGoal = (payload: Omit<GoalItem, "id">) => {
-    if (onGoalAdd) {
-      onGoalAdd(payload);
-      return;
-    }
     const g: GoalItem = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
     setFallbackGoals((s) => [g, ...s]);
-    showGoalToast(g.id, t("added"), "success", "global");
   };
 
   const updateGoal = (g: GoalItem) => {
-    if (onGoalUpdate) {
-      onGoalUpdate(g);
-      return;
-    }
     setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
-    showGoalToast(g.id, t("updated"), "success", "global");
   };
 
   const removeGoal = (id: string) => {
-    if (onGoalDelete) {
-      onGoalDelete(id);
-      return;
-    }
     setFallbackGoals((s) => s.filter((gg) => gg.id !== id));
-    showGoalToast(id, t("deleted"), "info", "global");
   };
 
-  // validation
   const validateForm = () => {
     const e: { [k: string]: string } = {};
     if (!form.title.trim()) e.title = t("required");
@@ -250,29 +228,10 @@ export default function Goals(props: Props) {
     return Object.keys(e).length === 0;
   };
 
-  const openAdd = () => {
-    setForm({ ...emptyForm });
-    setEditingId(null);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const openEdit = (g: GoalItem) => {
-    setForm({
-      title: g.title || "",
-      purpose: g.purpose || "",
-      startDate: g.startDate || isoToday(),
-      endDate: g.endDate || isoToday(),
-      duration: String(g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : defaultDuration),
-      notifyTime: g.notifyTime || "",
-    });
-    setEditingId(g.id);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const handleSave = () => {
+  // 🟢 حفظ الهدف + جدولة الإشعار
+  const handleSave = async () => {
     if (!validateForm()) return;
+
     const base: Omit<GoalItem, "id"> = {
       title: form.title.trim(),
       purpose: form.purpose.trim(),
@@ -284,10 +243,32 @@ export default function Goals(props: Props) {
       updatedAt: Date.now(),
     };
 
+    let savedGoal: GoalItem;
     if (editingId) {
-      updateGoal({ id: editingId, ...base });
+      savedGoal = { id: editingId, ...base };
+      updateGoal(savedGoal);
     } else {
+      savedGoal = { id: Date.now().toString(), ...base };
       addGoal(base);
+    }
+
+    if (savedGoal.notifyTime) {
+      const [hour, minute] = savedGoal.notifyTime.split(":").map(Number);
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: "⏰ تذكير بالهدف",
+            body: `لا تنسَ هدفك: ${savedGoal.title}`,
+            id: Number(savedGoal.id),
+            schedule: {
+              repeats: true,
+              every: 'day',
+              on: { hour, minute },
+            },
+            sound: "default",
+          },
+        ],
+      });
     }
 
     setShowForm(false);
@@ -296,83 +277,30 @@ export default function Goals(props: Props) {
     setErrors({});
   };
 
-  // mark today once only, show toast only next to check button
+  // mark today
   const markToday = (g: GoalItem) => {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      showGoalToast(g.id, t("alreadyMarked"), "warn", "check");
-      window.navigator.vibrate?.(30);
       return;
     }
     const updated: GoalItem = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     updateGoal(updated);
-    showGoalToast(g.id, language === "ar" ? "✓" : "Done", "success", "check");
   };
 
-  // test notification (toast appears next to bell)
-  const testNotifyNow = async (g: GoalItem) => {
-    if (!("Notification" in window)) {
-      showGoalToast(g.id, t("notifyNotSupported"), "warn", "bell");
-      return;
-    }
-    if (Notification.permission === "granted") {
-      new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      showGoalToast(g.id, t("testNotify"), "info", "bell");
-      return;
-    }
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") {
-      new Notification(g.title || "Reminder", { body: g.purpose || "" });
-      showGoalToast(g.id, t("testNotify"), "info", "bell");
-    } else {
-      showGoalToast(g.id, t("notifyDenied"), "warn", "bell");
-    }
-  };
-
-  // computed list
   const list = useMemo(() => (goals || []).slice().map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
 
   return (
     <div className="max-w-3xl mx-auto p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {/* header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-semibold">{t("header")}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {language === "ar" ? "تابع أهدافك — علّم مرة واحدة في اليوم" : "Track goals — mark once per day"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={openAdd} className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t("addGoal")}</span>
-          </button>
-        </div>
+      <div className="flex gap-2 mb-4">
+        <button onClick={requestPermission} className="bg-blue-600 text-white px-3 py-2 rounded">
+          طلب إذن الإشعارات
+        </button>
+        <button onClick={sendTestNotification} className="bg-green-600 text-white px-3 py-2 rounded">
+          إرسال إشعار تجريبي
+        </button>
       </div>
 
-
-{/* أزرار اختبار الإشعارات */}
-<div className="flex gap-2 mb-4">
-  <button
-    onClick={requestPermission}
-    className="bg-blue-600 text-white px-3 py-2 rounded"
-  >
-    طلب إذن الإشعارات
-  </button>
-
-  <button
-    onClick={sendTestNotification}
-    className="bg-green-600 text-white px-3 py-2 rounded"
-  >
-    إرسال إشعار تجريبي
-  </button>
-</div>
-
-
-
-      {/* list */}
       {list.length === 0 ? (
         <div className="p-6 text-center rounded border bg-gray-50 dark:bg-gray-800 text-gray-500">{t("noGoals")}</div>
       ) : (
@@ -396,9 +324,7 @@ export default function Goals(props: Props) {
                         {completed ? (language === "ar" ? "منجز" : "Achieved") : `${progress}%`}
                       </span>
                     </div>
-
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">{g.purpose}</p>
-
                     <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-3">
                       <Calendar className="w-4 h-4" />
                       <span>
@@ -410,8 +336,6 @@ export default function Goals(props: Props) {
                         </span>
                       )}
                     </div>
-
-                    {/* progress bar */}
                     <div className="mt-3">
                       <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
                         <div style={{ width: `${progress}%` }} className={`h-2 ${progress >= 100 ? "bg-green-400" : "bg-blue-500"}`} />
@@ -419,83 +343,16 @@ export default function Goals(props: Props) {
                       <div className="text-xs text-gray-500 mt-1">{progress}%</div>
                     </div>
                   </div>
-
-                  {/* buttons column; each button is relative so toast can appear beside it */}
                   <div className="flex flex-col items-center gap-2">
-                    {/* check button area */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => markToday(g)}
-                        title={t("markToday")}
-                        className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600"
-                      >
-                        <CheckCircle className="w-5 h-5" />
-                      </button>
-
-                      {/* toast shown only when target === "check" and goal matches */}
-                      {toast && toast.goalId === g.id && toast.target === "check" && (
-                        <div
-
-className={`absolute 
-  sm:left-full left-1/2 sm:ml-2 
-  -translate-x-1/2 sm:translate-x-0 
-  ml-9   /* تزحزح الرسالة أكثر لليمين (مرة ونصف مقارنة باليسار السابق) */
-  -top-8 sm:top-1/2 sm:-translate-y-1/2 
-  px-2 py-1 
-  rounded-md text-[11px] 
-  shadow-sm whitespace-nowrap z-10
-  ${toast.kind === "success" 
-    ? "bg-green-600 text-white" 
-    : toast.kind === "warn" 
-    ? "bg-yellow-400 text-black" 
-    : "bg-blue-600 text-white"}`}
-
-
- 
-                         
-                          
-
-                         
-                            role="status"
-                          aria-live="polite"
-                        >
-                          {toast.text}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="relative">
-                      <button type="button" onClick={() => openEdit(g)} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="relative">
-                      <button type="button" onClick={() => setPendingDeleteId(g.id)} title={t("delete")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {g.notifyTime && (
-                      <div className="relative">
-                        <button type="button" onClick={() => testNotifyNow(g)} title={t("testNotify")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600">
-                          <Bell className="w-5 h-5" />
-                        </button>
-
-                        {/* toast shown only when target === "bell" and goal matches */}
-                        {toast && toast.goalId === g.id && toast.target === "bell" && (
-                          <div
-                            className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10
-                              ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            {toast.text}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <button type="button" onClick={() => markToday(g)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
+                      <CheckCircle className="w-5 h-5" />
+                    </button>
+                    <button type="button" onClick={() => openEdit(g)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => setPendingDeleteId(g.id)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </header>
               </article>
@@ -504,23 +361,12 @@ className={`absolute
         </div>
       )}
 
-      {/* form modal (add / edit) */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md p-5 text-gray-900 dark:text-gray-100">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold">{editingId ? t("editGoal") : t("addGoal")}</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  setForm({ ...emptyForm });
-                  setErrors({});
-                }}
-                className="p-1"
-                aria-label={t("cancel")}
-              >
+              <button onClick={() => { setShowForm(false); setEditingId(null); setForm({ ...emptyForm }); setErrors({}); }} className="p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -531,13 +377,11 @@ className={`absolute
                 <input type="text" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
                 {errors.title && <div className="text-xs text-red-500 mt-1">{errors.title}</div>}
               </div>
-
               <div>
                 <label className="block text-sm font-medium">{t("purpose")}</label>
                 <textarea value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
                 {errors.purpose && <div className="text-xs text-red-500 mt-1">{errors.purpose}</div>}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm">{t("start")}</label>
@@ -546,22 +390,15 @@ className={`absolute
                 </div>
                 <div>
                   <label className="block text-sm">{t("end")}</label>
-                  <input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value, duration: String(daysBetweenInclusive(f.startDate, e.target.value)) }))}
-                    className="w-full p-2 border rounded bg-white dark:bg-gray-800"
-                  />
+                  <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value, duration: String(daysBetweenInclusive(f.startDate, e.target.value)) }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
                   {errors.endDate && <div className="text-xs text-red-500 mt-1">{errors.endDate}</div>}
                 </div>
               </div>
-
               <div className="flex gap-2 items-center">
                 <div className="flex-1">
                   <label className="block text-sm">{t("duration")}</label>
                   <input type="number" min={1} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
                 </div>
-
                 <div className="flex-1">
                   <label className="block text-sm">{t("notify")}</label>
                   <input type="time" value={form.notifyTime} onChange={(e) => setForm((f) => ({ ...f, notifyTime: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
@@ -573,16 +410,7 @@ className={`absolute
               <button type="button" onClick={handleSave} className="flex-1 bg-blue-600 text-white py-2 rounded">
                 {t("save")}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  setForm({ ...emptyForm });
-                  setErrors({});
-                }}
-                className="flex-1 py-2 rounded border"
-              >
+              <button onClick={() => { setShowForm(false); setEditingId(null); setForm({ ...emptyForm }); setErrors({}); }} className="flex-1 py-2 rounded border">
                 {t("cancel")}
               </button>
             </div>
@@ -590,23 +418,15 @@ className={`absolute
         </div>
       )}
 
-      {/* delete confirm */}
       {pendingDeleteId && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white dark:bg-gray-900 rounded p-4 w-full max-w-sm">
             <p className="mb-4 text-gray-700 dark:text-gray-200">{t("deleteConfirm")}</p>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  removeGoal(pendingDeleteId);
-                  setPendingDeleteId(null);
-                }}
-                className="flex-1 py-2 rounded bg-red-600 text-white"
-              >
+              <button onClick={() => { removeGoal(pendingDeleteId); setPendingDeleteId(null); }} className="flex-1 py-2 rounded bg-red-600 text-white">
                 {t("delete")}
               </button>
-              <button type="button" onClick={() => setPendingDeleteId(null)} className="flex-1 py-2 rounded border">
+              <button onClick={() => setPendingDeleteId(null)} className="flex-1 py-2 rounded border">
                 {t("cancel")}
               </button>
             </div>
