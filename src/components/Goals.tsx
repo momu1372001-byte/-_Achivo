@@ -70,6 +70,15 @@ export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
 
+  // toast صغير للfeedback بجانب زر
+  const [toast, setToast] = useState<{ goalId: string; text: string; kind?: "info" | "success" | "warn"; target?: "check" | "global" } | null>(null);
+  const showGoalToast = (goalId: string, text: string, kind: "info" | "success" | "warn" = "info", target: "check" | "global" = "global") => {
+    setToast({ goalId, text, kind, target });
+    setTimeout(() => {
+      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text && cur.target === target ? null : cur));
+    }, 2200);
+  };
+
   // fallback storage (localStorage)
   const [fallbackGoals, setFallbackGoals] = useState<GoalItem[]>(() => {
     try {
@@ -203,12 +212,13 @@ export default function Goals(props: Props) {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      alert(t("alreadyMarked"));
+      showGoalToast(g.id, t("alreadyMarked"), "warn", "check");
       return;
     }
     const updated: GoalItem = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     if (onGoalUpdate) onGoalUpdate(updated);
     else updateGoal(updated);
+    showGoalToast(g.id, language === "ar" ? "✓" : "Done", "success", "check");
   };
 
   const list = useMemo(() => (goals || []).slice().map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
@@ -265,9 +275,14 @@ export default function Goals(props: Props) {
                   </div>
 
                   <div className="flex flex-col items-center gap-2">
-                    <button type="button" onClick={() => markToday(g)} title={t("markToday")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
+                    <div className="relative">
+                      <button type="button" onClick={() => markToday(g)} title={t("markToday")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
+                        <CheckCircle className="w-5 h-5" />
+                      </button>
+                      {toast && toast.goalId === g.id && toast.target === "check" && (
+                        <div className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10 ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`} role="status" aria-live="polite">{toast.text}</div>
+                      )}
+                    </div>
 
                     <button type="button" onClick={() => { setShowForm(true); setEditingId(g.id); setForm({ title: g.title || "", purpose: g.purpose || "", startDate: g.startDate || isoToday(), endDate: g.endDate || isoToday(), duration: String(g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : defaultDuration) }); }} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                       <Edit3 className="w-4 h-4" />
