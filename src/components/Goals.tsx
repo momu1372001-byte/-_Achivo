@@ -1,23 +1,27 @@
 // src/components/Goals.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Edit3, Trash2, CheckCircle, Bell, X, Calendar } from "lucide-react";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { Capacitor } from "@capacitor/core";
 
 /** نوع الهدف */
 type GoalItem = {
   id: string;
   title: string;
   purpose?: string;
-  startDate?: string;
-  endDate?: string;
-  notifyTime?: string;
+  startDate?: string; // "YYYY-MM-DD"
+  endDate?: string; // "YYYY-MM-DD"
+  notifyTime?: string; // "HH:MM"
   notificationsEnabled?: boolean;
   completedDays?: string[];
   milestones?: { id: string; title: string; completed?: boolean }[];
   updatedAt?: number;
+  [k: string]: any;
 };
 
 type Props = {
   goals?: GoalItem[];
+  tasks?: any[];
   onGoalAdd?: (g: Omit<GoalItem, "id">) => void;
   onGoalUpdate?: (g: GoalItem) => void;
   onGoalDelete?: (id: string) => void;
@@ -49,8 +53,8 @@ const tr = {
     added: "تم إضافة الهدف",
     updated: "تم تحديث الهدف",
     deleted: "تم حذف الهدف",
-    reminderSet: "✅ تم ضبط التذكير",
-    reminderCancelled: "⛔ تم إلغاء التذكير",
+    reminderOn: "تم ضبط التذكير",
+    reminderOff: "تم إلغاء التذكير",
   },
   en: {
     header: "Goals",
@@ -74,8 +78,8 @@ const tr = {
     added: "Goal added",
     updated: "Goal updated",
     deleted: "Goal deleted",
-    reminderSet: "✅ Reminder set",
-    reminderCancelled: "⛔ Reminder cancelled",
+    reminderOn: "Reminder set",
+    reminderOff: "Reminder cancelled",
   },
 } as const;
 
@@ -83,15 +87,27 @@ export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
 
-  // توست
-  const [toast, setToast] = useState<{ goalId: string; text: string } | null>(null);
+  // toast صغير
+  const [toast, setToast] = useState<{
+    goalId: string;
+    text: string;
+    kind?: "info" | "success" | "warn";
+    target?: "check" | "bell" | "global";
+  } | null>(null);
 
-  const showGoalToast = (goalId: string, text: string) => {
-    setToast({ goalId, text });
-    setTimeout(() => setToast(null), 2000);
+  const showGoalToast = (
+    goalId: string,
+    text: string,
+    kind: "info" | "success" | "warn" = "info",
+    target: "check" | "bell" | "global" = "global"
+  ) => {
+    setToast({ goalId, text, kind, target });
+    setTimeout(() => {
+      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text && cur.target === target ? null : cur));
+    }, 2000);
   };
 
-  // تخزين fallback
+  // تخزين محلي
   const [fallbackGoals, setFallbackGoals] = useState<GoalItem[]>(() => {
     try {
       const raw = localStorage.getItem(FALLBACK_KEY);
@@ -108,12 +124,13 @@ export default function Goals(props: Props) {
 
   const goals = parentGoals && parentGoals.length > 0 ? parentGoals : fallbackGoals;
 
-  // UI state
+  // حالات الواجهة
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ [k: string]: string }>({});
 
+  // توابع مساعدة
   const isoToday = () => new Date().toISOString().split("T")[0];
   const addDaysToIso = (iso: string, days: number) => {
     const d = new Date(iso);
@@ -143,73 +160,92 @@ export default function Goals(props: Props) {
     endDate: addDaysToIso(isoToday(), defaultDuration - 1),
     duration: String(defaultDuration),
     notifyTime: "",
-    notificationsEnabled: false,
   };
   const [form, setForm] = useState(() => ({ ...emptyForm }));
 
-  // sync duration -> endDate
-  useEffect(() => {
-    const dur = parseInt(form.duration || "0", 10);
-    if (!Number.isNaN(dur) && dur > 0) {
-      const newEnd = addDaysToIso(form.startDate || isoToday(), dur - 1);
-      setForm((f) => ({ ...f, endDate: newEnd }));
+  // ⏰ جدولة إشعارات
+  const toNotifId = (goalId: string) => {
+    let n = 0;
+    for (let i = 0; i < goalId.length; i++) {
+      n = (n * 31 + goalId.charCodeAt(i)) % 1000000;
     }
-  }, [form.duration, form.startDate]);
+    return n + 1000;
+  };
+
+  async function scheduleGoalNotification(goal: GoalItem) {
+    if (!goal.notifyTime) return;
+    try {
+      const perm = await LocalNotifications.requestPermissions();
+      if ((perm as any).display !== "granted") return;
+
+      const [hh, mm] = goal.notifyTime.split(":").map((v) => Number(v));
+      const now = new Date();
+      let at = new Date();
+      at.setHours(hh, mm, 0, 0);
+      if (at <= now) at.setDate(at.getDate() + 1);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: toNotifId(goal.id),
+            title: goal.title || (language === "ar" ? "تذكير" : "Reminder"),
+            body: goal.purpose || "",
+            schedule: { at, repeats: true },
+            sound: "default",
+          },
+        ],
+      });
+      showGoalToast(goal.id, t("reminderOn"), "success", "bell");
+    } catch (err) {
+      console.error("schedule error", err);
+    }
+  }
+
+  async function cancelGoalNotification(goal: GoalItem) {
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: toNotifId(goal.id) }] });
+      showGoalToast(goal.id, t("reminderOff"), "info", "bell");
+    } catch {}
+  }
 
   // CRUD
   const addGoal = (payload: Omit<GoalItem, "id">) => {
-    if (onGoalAdd) return onGoalAdd(payload);
+    if (onGoalAdd) {
+      onGoalAdd(payload);
+      return;
+    }
     const g: GoalItem = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
     setFallbackGoals((s) => [g, ...s]);
-    showGoalToast(g.id, t("added"));
+    if (g.notifyTime) scheduleGoalNotification(g);
   };
 
   const updateGoal = (g: GoalItem) => {
-    if (onGoalUpdate) return onGoalUpdate(g);
+    if (onGoalUpdate) {
+      onGoalUpdate(g);
+      return;
+    }
     setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
-    showGoalToast(g.id, t("updated"));
+    if (g.notifyTime) scheduleGoalNotification(g);
   };
 
   const removeGoal = (id: string) => {
-    if (onGoalDelete) return onGoalDelete(id);
+    if (onGoalDelete) {
+      onGoalDelete(id);
+      return;
+    }
     setFallbackGoals((s) => s.filter((gg) => gg.id !== id));
-    showGoalToast(id, t("deleted"));
+    cancelGoalNotification({ id } as GoalItem);
   };
 
-  // التحقق من الفورم
   const validateForm = () => {
     const e: { [k: string]: string } = {};
     if (!form.title.trim()) e.title = t("required");
     if (!form.purpose.trim()) e.purpose = t("required");
     if (!form.startDate) e.startDate = t("required");
     if (!form.endDate) e.endDate = t("required");
-    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
-      e.endDate = t("invalidDates");
-    }
+    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) e.endDate = t("invalidDates");
     setErrors(e);
     return Object.keys(e).length === 0;
-  };
-
-  const openAdd = () => {
-    setForm({ ...emptyForm });
-    setEditingId(null);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const openEdit = (g: GoalItem) => {
-    setForm({
-      title: g.title || "",
-      purpose: g.purpose || "",
-      startDate: g.startDate || isoToday(),
-      endDate: g.endDate || isoToday(),
-      duration: String(g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : defaultDuration),
-      notifyTime: g.notifyTime || "",
-      notificationsEnabled: !!g.notificationsEnabled,
-    });
-    setEditingId(g.id);
-    setErrors({});
-    setShowForm(true);
   };
 
   const handleSave = () => {
@@ -220,199 +256,145 @@ export default function Goals(props: Props) {
       startDate: form.startDate,
       endDate: form.endDate,
       notifyTime: form.notifyTime || undefined,
-      notificationsEnabled: !!(form.notifyTime && form.notificationsEnabled),
       completedDays: editingId ? (goals.find((x) => x.id === editingId)?.completedDays || []) : [],
       milestones: [],
       updatedAt: Date.now(),
     };
-    if (editingId) {
-      updateGoal({ id: editingId, ...base });
-    } else {
-      addGoal(base);
-    }
+
+    if (editingId) updateGoal({ id: editingId, ...base });
+    else addGoal(base);
+
     setShowForm(false);
     setEditingId(null);
     setForm({ ...emptyForm });
     setErrors({});
   };
 
+  // علامة اليوم
   const markToday = (g: GoalItem) => {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      showGoalToast(g.id, t("alreadyMarked"));
+      showGoalToast(g.id, t("alreadyMarked"), "warn", "check");
       return;
     }
     const updated: GoalItem = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     updateGoal(updated);
-    showGoalToast(g.id, "✓");
   };
 
-  const toggleReminderUI = (g: GoalItem) => {
-    if (!g.notifyTime) {
-      showGoalToast(g.id, language === "ar" ? "لم يتم تحديد وقت للتذكير" : "No reminder time set");
-      return;
+  // تبديل التذكير عند الضغط على الجرس
+  const toggleReminder = (g: GoalItem) => {
+    if (g.notifyTime) {
+      cancelGoalNotification(g);
+      updateGoal({ ...g, notifyTime: undefined });
+    } else {
+      // لو معندوش وقت، مش هيتعمل حاجة
+      showGoalToast(g.id, language === "ar" ? "حدد وقت أولاً" : "Set time first", "warn", "bell");
     }
-    const updated: GoalItem = { ...g, notificationsEnabled: !g.notificationsEnabled, updatedAt: Date.now() };
-    updateGoal(updated);
-    showGoalToast(
-      g.id,
-      updated.notificationsEnabled ? t("reminderSet") : t("reminderCancelled")
-    );
   };
 
-  const list = useMemo(() => (goals || []).slice().map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
+  const list = useMemo(() => goals.map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
+
+  // إعادة جدولة عند تشغيل التطبيق
+  useEffect(() => {
+    (async () => {
+      if (Capacitor.getPlatform() !== "web") {
+        const perm = await LocalNotifications.requestPermissions();
+        if ((perm as any).display === "granted") {
+          for (const g of goals) {
+            if (g.notifyTime) await scheduleGoalNotification(g);
+          }
+        }
+      }
+    })();
+  }, []);
 
   return (
-    <div className="max-w-3xl mx-auto p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {/* header */}
+    <div className="max-w-3xl mx-auto p-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">{t("header")}</h2>
-        <button type="button" onClick={openAdd} className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow">
-          <Plus className="w-4 h-4" />
-          <span>{t("addGoal")}</span>
+        <button onClick={() => setShowForm(true)} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center gap-1">
+          <Plus className="w-4 h-4" /> {t("addGoal")}
         </button>
       </div>
 
-      {/* list */}
       {list.length === 0 ? (
-        <div className="p-6 text-center rounded border bg-gray-50 dark:bg-gray-800 text-gray-500">{t("noGoals")}</div>
+        <div className="p-6 text-center border rounded">{t("noGoals")}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {list.map((g) => {
-            const progress = g.__progress as number;
-            const completed = progress >= 100;
-            const totalDays = g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : 0;
-
-            return (
-              <article key={g.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm flex flex-col">
-                <header className="flex justify-between items-start gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg">{g.title}</h3>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          completed ? "bg-green-100 text-green-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
-                        }`}
-                      >
-                        {completed ? (language === "ar" ? "منجز" : "Achieved") : `${progress}%`}
+          {list.map((g) => (
+            <article key={g.id} className="p-4 border rounded shadow-sm flex flex-col">
+              <header className="flex justify-between items-start gap-3">
+                <div className="flex-1">
+                  <h3 className="font-semibold">{g.title}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{g.purpose}</p>
+                  <div className="text-xs mt-2 flex gap-2 items-center">
+                    <Calendar className="w-4 h-4" />
+                    {g.startDate} → {g.endDate}
+                    {g.notifyTime && (
+                      <span className="flex items-center gap-1">
+                        <Bell className="w-4 h-4" /> {g.notifyTime}
                       </span>
-                    </div>
-
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">{g.purpose}</p>
-
-                    <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-3">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {g.startDate} → {g.endDate} {totalDays ? `(${totalDays} ${language === "ar" ? "يوم" : "days"})` : ""}
-                      </span>
-                      {g.notifyTime && (
-                        <span className="flex items-center gap-1 ml-2">
-                          <Bell className="w-4 h-4" /> <span>{g.notifyTime}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* progress bar */}
-                    <div className="mt-3">
-                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
-                        <div style={{ width: `${progress}%` }} className={`h-2 ${progress >= 100 ? "bg-green-400" : "bg-blue-500"}`} />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{progress}%</div>
-                    </div>
-                  </div>
-
-                  {/* actions */}
-                  <div className="flex flex-col items-center gap-2">
-                    <button onClick={() => markToday(g)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
-
-                    <button onClick={() => openEdit(g)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-
-                    <button onClick={() => setPendingDeleteId(g.id)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    {/* toggle reminder */}
-                    <button onClick={() => toggleReminderUI(g)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600">
-                      <Bell className="w-5 h-5" />
-                    </button>
-
-                    {toast && toast.goalId === g.id && (
-                      <div className="absolute left-full ml-2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10 bg-blue-600 text-white">
-                        {toast.text}
-                      </div>
                     )}
                   </div>
-                </header>
-              </article>
-            );
-          })}
+                </div>
+
+                <div className="flex flex-col gap-2 items-center">
+                  <button onClick={() => markToday(g)} className="text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setEditingId(g.id)} className="text-blue-600">
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setPendingDeleteId(g.id)} className="text-red-600">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => toggleReminder(g)} className="text-yellow-600">
+                    <Bell className="w-5 h-5" />
+                  </button>
+                </div>
+              </header>
+              {toast && toast.goalId === g.id && toast.target === "bell" && (
+                <div className="text-xs mt-2">{toast.text}</div>
+              )}
+            </article>
+          ))}
         </div>
       )}
 
-      {/* form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md p-5 text-gray-900 dark:text-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">{editingId ? t("editGoal") : t("addGoal")}</h3>
-              <button onClick={() => setShowForm(false)} className="p-1">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-5 rounded w-full max-w-md">
+            <div className="flex justify-between mb-3">
+              <h3>{editingId ? t("editGoal") : t("addGoal")}</h3>
+              <button onClick={() => setShowForm(false)}>
+                <X />
               </button>
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium">{t("title")}</label>
-                <input type="text" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                {errors.title && <div className="text-xs text-red-500 mt-1">{errors.title}</div>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium">{t("purpose")}</label>
-                <textarea value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                {errors.purpose && <div className="text-xs text-red-500 mt-1">{errors.purpose}</div>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm">{t("start")}</label>
-                  <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                  {errors.startDate && <div className="text-xs text-red-500 mt-1">{errors.startDate}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm">{t("end")}</label>
-                  <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                  {errors.endDate && <div className="text-xs text-red-500 mt-1">{errors.endDate}</div>}
-                </div>
-              </div>
-
-              <div className="flex gap-2 items-center">
-                <div className="flex-1">
-                  <label className="block text-sm">{t("duration")}</label>
-                  <input type="number" min={1} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-sm">{t("notify")}</label>
-                  <input type="time" value={form.notifyTime} onChange={(e) => setForm((f) => ({ ...f, notifyTime: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                  <label className="mt-1 text-xs flex items-center gap-1">
-                    <input type="checkbox" checked={!!form.notificationsEnabled} onChange={(e) => setForm((f) => ({ ...f, notificationsEnabled: e.target.checked }))} />
-                    <span className="text-xs">{language === "ar" ? "تفعيل التذكير" : "Enable reminder"}</span>
-                  </label>
-                </div>
-              </div>
+              <input
+                placeholder={t("title")}
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                className="w-full border p-2 rounded"
+              />
+              <textarea
+                placeholder={t("purpose")}
+                value={form.purpose}
+                onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
+                className="w-full border p-2 rounded"
+              />
+              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
+              <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
+              <input type="time" value={form.notifyTime} onChange={(e) => setForm((f) => ({ ...f, notifyTime: e.target.value }))} />
             </div>
 
             <div className="flex gap-2 mt-4">
-              <button type="button" onClick={handleSave} className="flex-1 bg-blue-600 text-white py-2 rounded">
+              <button onClick={handleSave} className="bg-blue-600 text-white px-3 py-2 rounded">
                 {t("save")}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2 rounded border">
+              <button onClick={() => setShowForm(false)} className="px-3 py-2 border rounded">
                 {t("cancel")}
               </button>
             </div>
@@ -420,16 +402,21 @@ export default function Goals(props: Props) {
         </div>
       )}
 
-      {/* delete confirm */}
       {pendingDeleteId && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded p-4 w-full max-w-sm">
-            <p className="mb-4 text-gray-700 dark:text-gray-200">{t("deleteConfirm")}</p>
-            <div className="flex gap-2">
-              <button onClick={() => { removeGoal(pendingDeleteId); setPendingDeleteId(null); }} className="flex-1 py-2 rounded bg-red-600 text-white">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-4 rounded">
+            <p>{t("deleteConfirm")}</p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => {
+                  removeGoal(pendingDeleteId);
+                  setPendingDeleteId(null);
+                }}
+                className="bg-red-600 text-white px-3 py-1 rounded"
+              >
                 {t("delete")}
               </button>
-              <button onClick={() => setPendingDeleteId(null)} className="flex-1 py-2 rounded border">
+              <button onClick={() => setPendingDeleteId(null)} className="px-3 py-1 border rounded">
                 {t("cancel")}
               </button>
             </div>
