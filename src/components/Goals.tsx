@@ -1,8 +1,6 @@
 // src/components/Goals.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Edit3, Trash2, CheckCircle, Bell, X, Calendar } from "lucide-react";
-import { LocalNotifications } from "@capacitor/local-notifications";
-import { Capacitor } from "@capacitor/core";
+import { Plus, Edit3, Trash2, CheckCircle, X, Calendar } from "lucide-react";
 
 /** مبسط نوع الهدف */
 type GoalItem = {
@@ -11,8 +9,6 @@ type GoalItem = {
   purpose?: string;
   startDate?: string; // "YYYY-MM-DD"
   endDate?: string; // "YYYY-MM-DD"
-  notifyTime?: string; // "HH:MM"
-  notificationsEnabled?: boolean; // تفعيل التذكير (معلومات واجهة/حالة)
   completedDays?: string[]; // ["2025-09-28", ...]
   milestones?: { id: string; title: string; completed?: boolean }[];
   updatedAt?: number;
@@ -39,7 +35,6 @@ const tr = {
     start: "تاريخ البداية *",
     end: "تاريخ النهاية *",
     duration: "المدة (أيام)",
-    notify: "وقت التذكير (اختياري)",
     save: "حفظ",
     cancel: "إلغاء",
     delete: "حذف",
@@ -49,14 +44,6 @@ const tr = {
     deleteConfirm: "هل تريد حذف هذا الهدف؟",
     invalidDates: "تأكد أن تاريخ النهاية بعد البداية",
     required: "هذا الحقل مطلوب",
-    added: "تم إضافة الهدف",
-    updated: "تم تحديث الهدف",
-    deleted: "تم حذف الهدف",
-    setTimeFirst: "حدد وقت التذكير أولاً",
-    reminderSet: "تم ضبط التذكير",
-    reminderCancelled: "تم إلغاء التذكير",
-    notifyDenied: "رفض أذونات الإشعارات",
-    notifyNotSupported: "الإشعارات غير مدعومة",
   },
   en: {
     header: "Goals",
@@ -67,7 +54,6 @@ const tr = {
     start: "Start date *",
     end: "End date *",
     duration: "Duration (days)",
-    notify: "Reminder time (optional)",
     save: "Save",
     cancel: "Cancel",
     delete: "Delete",
@@ -77,29 +63,12 @@ const tr = {
     deleteConfirm: "Delete this goal?",
     invalidDates: "Make sure end date is after start date",
     required: "This field is required",
-    added: "Goal added",
-    updated: "Goal updated",
-    deleted: "Goal deleted",
-    setTimeFirst: "Set reminder time first",
-    reminderSet: "Reminder set",
-    reminderCancelled: "Reminder cancelled",
-    notifyDenied: "Notification permission denied",
-    notifyNotSupported: "Notifications not supported",
   },
 } as const;
 
 export default function Goals(props: Props) {
   const { goals: parentGoals, onGoalAdd, onGoalUpdate, onGoalDelete, language = "ar" } = props;
   const t = (k: keyof typeof tr["ar"]) => tr[language][k];
-
-  // toast صغير للfeedback بجانب زر
-  const [toast, setToast] = useState<{ goalId: string; text: string; kind?: "info" | "success" | "warn"; target?: "check" | "bell" | "global" } | null>(null);
-  const showGoalToast = (goalId: string, text: string, kind: "info" | "success" | "warn" = "info", target: "check" | "bell" | "global" = "global") => {
-    setToast({ goalId, text, kind, target });
-    setTimeout(() => {
-      setToast((cur) => (cur && cur.goalId === goalId && cur.text === text && cur.target === target ? null : cur));
-    }, 2200);
-  };
 
   // fallback storage (localStorage)
   const [fallbackGoals, setFallbackGoals] = useState<GoalItem[]>(() => {
@@ -145,7 +114,7 @@ export default function Goals(props: Props) {
     return Math.min(100, Math.round((done / total) * 100));
   };
 
-  // form defaults (لا توجد checkbox للتذكير هنا — التفعيل عبر زر الجرس)
+  // form defaults
   const defaultDuration = 30;
   const emptyForm = {
     title: "",
@@ -153,7 +122,6 @@ export default function Goals(props: Props) {
     startDate: isoToday(),
     endDate: addDaysToIso(isoToday(), defaultDuration - 1),
     duration: String(defaultDuration),
-    notifyTime: "",
   };
   const [form, setForm] = useState(() => ({ ...emptyForm }));
 
@@ -166,104 +134,14 @@ export default function Goals(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.duration, form.startDate]);
 
-  // ---------- Notifications helpers ----------
-  // stable numeric id from string id
-  const toNotifId = (goalId: string) => {
-    let n = 0;
-    for (let i = 0; i < goalId.length; i++) {
-      n = (n * 31 + goalId.charCodeAt(i)) % 1000000;
-    }
-    return n + 1000;
-  };
-
-  // schedule a daily notification for goal (will request permission if needed)
-  async function scheduleGoalNotification(goal: GoalItem) {
-    if (!goal.notifyTime) return;
-    try {
-      // request permission programmatically (no UI button)
-      const perm = await LocalNotifications.requestPermissions();
-      if ((perm as any).display !== "granted") {
-        showGoalToast(goal.id, t("notifyDenied"), "warn", "bell");
-        return;
-      }
-
-      const [hh, mm] = (goal.notifyTime || "09:00").split(":").map((v) => Number(v));
-      const now = new Date();
-      const at = new Date();
-      at.setHours(hh, mm, 0, 0);
-      if (at <= now) at.setDate(at.getDate() + 1);
-
-      // cancel previous with same id then schedule
-      const id = toNotifId(goal.id);
-      await LocalNotifications.cancel({ notifications: [{ id }] });
-
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id,
-            title: goal.title || (language === "ar" ? "تذكير" : "Reminder"),
-            body: goal.purpose || "",
-            schedule: { at, repeats: true },
-            sound: "default",
-          },
-        ],
-      });
-
-      showGoalToast(goal.id, t("reminderSet"), "success", "bell");
-    } catch (err) {
-      console.error("scheduleGoalNotification error:", err);
-      showGoalToast(goal.id, t("notifyNotSupported"), "warn", "bell");
-    }
-  }
-
-  async function cancelGoalNotification(goal: GoalItem) {
-    try {
-      const id = toNotifId(goal.id);
-      await LocalNotifications.cancel({ notifications: [{ id }] });
-      showGoalToast(goal.id, t("reminderCancelled"), "info", "bell");
-    } catch (err) {
-      console.error("cancelGoalNotification error:", err);
-    }
-  }
-
-  // toggle reminder via Bell button — إذا كان هناك notifyTime نفعّل/نوقف؛ وإلا نطلب إدخال وقت
-  const toggleReminder = async (g: GoalItem) => {
-    const current = (parentGoals ? parentGoals.find((x) => x.id === g.id) : fallbackGoals.find((x) => x.id === g.id)) || g;
-
-    if (!current.notifyTime) {
-      showGoalToast(g.id, t("setTimeFirst"), "warn", "bell");
-      return;
-    }
-
-    const enabled = !!current.notificationsEnabled;
-    const updated: GoalItem = { ...current, notificationsEnabled: !enabled, updatedAt: Date.now() };
-
-    // persist update
-    if (onGoalUpdate) {
-      onGoalUpdate(updated);
-    } else {
-      setFallbackGoals((s) => s.map((x) => (x.id === updated.id ? updated : x)));
-    }
-
-    // schedule or cancel
-    if (!enabled) {
-      // turning ON
-      await scheduleGoalNotification(updated);
-    } else {
-      // turning OFF
-      await cancelGoalNotification(updated);
-    }
-  };
-
   // ---------- CRUD helpers ----------
   const addGoal = (payload: Omit<GoalItem, "id">) => {
     if (onGoalAdd) {
       onGoalAdd(payload);
       return;
     }
-    const g: GoalItem = { id: Date.now().toString(), ...payload, notificationsEnabled: false, updatedAt: Date.now() };
+    const g: GoalItem = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
     setFallbackGoals((s) => [g, ...s]);
-    // لا نفعّل التذكير مباشرة عند الحفظ — التفعيل عبر زر الجرس حسب رغبة المستخدم
   };
 
   const updateGoal = (g: GoalItem) => {
@@ -272,13 +150,6 @@ export default function Goals(props: Props) {
       return;
     }
     setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
-    // إذا التذكير مفعل مع notifyTime، أعد جدولة
-    if (g.notificationsEnabled && g.notifyTime) {
-      void scheduleGoalNotification(g);
-    }
-    if (!g.notificationsEnabled) {
-      void cancelGoalNotification(g);
-    }
   };
 
   const removeGoal = (id: string) => {
@@ -287,7 +158,6 @@ export default function Goals(props: Props) {
       return;
     }
     setFallbackGoals((s) => s.filter((gg) => gg.id !== id));
-    void LocalNotifications.cancel({ notifications: [{ id: toNotifId(id) }] }).catch(() => {});
   };
 
   // validation + form save
@@ -309,8 +179,6 @@ export default function Goals(props: Props) {
       purpose: form.purpose.trim(),
       startDate: form.startDate,
       endDate: form.endDate,
-      notifyTime: form.notifyTime || undefined,
-      notificationsEnabled: false, // لا نفعل تلقائياً
       completedDays: editingId ? (goals.find((x) => x.id === editingId)?.completedDays || []) : [],
       milestones: [],
       updatedAt: Date.now(),
@@ -335,39 +203,13 @@ export default function Goals(props: Props) {
     const today = isoToday();
     const days = g.completedDays || [];
     if (days.includes(today)) {
-      showGoalToast(g.id, t("alreadyMarked"), "warn", "check");
+      alert(t("alreadyMarked"));
       return;
     }
     const updated: GoalItem = { ...g, completedDays: [...days, today], updatedAt: Date.now() };
     if (onGoalUpdate) onGoalUpdate(updated);
     else updateGoal(updated);
-    showGoalToast(g.id, language === "ar" ? "✓" : "Done", "success", "check");
   };
-
-  // test helper (used only internally for native scheduling verification — NOT exposed as button)
-  // On mount: if native and permission granted, re-schedule existing enabled goals
-  useEffect(() => {
-    (async () => {
-      try {
-        if (Capacitor.getPlatform() !== "web") {
-          const perm = await LocalNotifications.requestPermissions();
-          if ((perm as any).display === "granted") {
-            for (const g of goals) {
-              if (g.notifyTime && g.notificationsEnabled) {
-                // seq to avoid plugin overload
-                // eslint-disable-next-line no-await-in-loop
-                await scheduleGoalNotification(g);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        // ignore
-        console.error("mount schedule error:", err);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const list = useMemo(() => (goals || []).slice().map((g) => ({ ...g, __progress: calcProgress(g) })), [goals]);
 
@@ -412,11 +254,6 @@ export default function Goals(props: Props) {
                     <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-3">
                       <Calendar className="w-4 h-4" />
                       <span>{g.startDate} → {g.endDate} {totalDays ? `(${totalDays} ${language === "ar" ? "يوم" : "days"})` : ""}</span>
-                      {g.notifyTime && (
-                        <span className="flex items-center gap-1 ml-2">
-                          <Bell className="w-4 h-4" /> <span className="text-xs">{g.notifyTime}{g.notificationsEnabled ? " • ON" : ""}</span>
-                        </span>
-                      )}
                     </div>
 
                     <div className="mt-3">
@@ -428,32 +265,17 @@ export default function Goals(props: Props) {
                   </div>
 
                   <div className="flex flex-col items-center gap-2">
-                    <div className="relative">
-                      <button type="button" onClick={() => markToday(g)} title={t("markToday")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
-                        <CheckCircle className="w-5 h-5" />
-                      </button>
-                      {toast && toast.goalId === g.id && toast.target === "check" && (
-                        <div className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10 ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`} role="status" aria-live="polite">{toast.text}</div>
-                      )}
-                    </div>
+                    <button type="button" onClick={() => markToday(g)} title={t("markToday")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600">
+                      <CheckCircle className="w-5 h-5" />
+                    </button>
 
-                    <button type="button" onClick={() => { setShowForm(true); setEditingId(g.id); setForm({ title: g.title || "", purpose: g.purpose || "", startDate: g.startDate || isoToday(), endDate: g.endDate || isoToday(), duration: String(g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : defaultDuration), notifyTime: g.notifyTime || "" }); }} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button type="button" onClick={() => { setShowForm(true); setEditingId(g.id); setForm({ title: g.title || "", purpose: g.purpose || "", startDate: g.startDate || isoToday(), endDate: g.endDate || isoToday(), duration: String(g.startDate && g.endDate ? daysBetweenInclusive(g.startDate, g.endDate) : defaultDuration) }); }} title={language === "ar" ? "تعديل" : "Edit"} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                       <Edit3 className="w-4 h-4" />
                     </button>
 
                     <button type="button" onClick={() => setPendingDeleteId(g.id)} title={t("delete")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">
                       <Trash2 className="w-4 h-4" />
                     </button>
-
-                    <div className="relative">
-                      <button type="button" onClick={() => toggleReminder(g)} title={language === "ar" ? (g.notificationsEnabled ? "إيقاف التذكير" : "تشغيل التذكير") : (g.notificationsEnabled ? "Disable reminder" : "Enable reminder")} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-600">
-                        <Bell className="w-5 h-5" />
-                      </button>
-
-                      {toast && toast.goalId === g.id && toast.target === "bell" && (
-                        <div className={`absolute sm:left-full left-1/2 sm:ml-2 -translate-x-1/2 sm:translate-x-0 -top-8 sm:top-1/2 sm:-translate-y-1/2 px-2 py-1 rounded-md text-[11px] shadow-sm whitespace-nowrap z-10 ${toast.kind === "success" ? "bg-green-600 text-white" : toast.kind === "warn" ? "bg-yellow-400 text-black" : "bg-blue-600 text-white"}`} role="status" aria-live="polite">{toast.text}</div>
-                      )}
-                    </div>
                   </div>
                 </header>
               </article>
@@ -499,16 +321,9 @@ export default function Goals(props: Props) {
                 </div>
               </div>
 
-              <div className="flex gap-2 items-center">
-                <div className="flex-1">
-                  <label className="block text-sm">{t("duration")}</label>
-                  <input type="number" min={1} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-sm">{t("notify")}</label>
-                  <input type="time" value={form.notifyTime} onChange={(e) => setForm((f) => ({ ...f, notifyTime: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
-                </div>
+              <div>
+                <label className="block text-sm">{t("duration")}</label>
+                <input type="number" min={1} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} className="w-full p-2 border rounded bg-white dark:bg-gray-800" />
               </div>
             </div>
 
