@@ -224,7 +224,7 @@ case "dashboard":
 
 
   case "calculator":
-  return <Calculator language={language} />;
+   return <Calculator language={language} />;
 
 
 case "notes":
