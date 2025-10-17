@@ -10,6 +10,7 @@ import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
 import DrawingPad from "./components/DrawingPad";
 import PomodoroTimer from "./components/PomodoroTimer";
+import Calculator from "./components/Calculator";
 
 import {
   initialCategories,
@@ -25,7 +26,7 @@ type ActiveModal = "settings" | "security" | "ai" | null;
 //type Tabs = "dashboard" | "tasks" | "calendar" | "goals";
 
 //type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw";
-type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw" | "pomodoro";
+type Tabs = "dashboard" | "tasks" | "calendar" | "goals" | "notes" | "draw" | "pomodoro" | "calculator";
 
 
 function App() {
@@ -220,6 +221,10 @@ case "dashboard":
       )}
     </>
   );
+
+
+  case "calculator":
+  return <Calculator language={language} />;
 
 
 case "notes":

@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Calculator } from "lucide-react";
 
 interface Props {
   activeTab: string;
@@ -43,6 +44,8 @@ const UnifiedBottomNav: React.FC<Props> = ({
     { key: "notes", label: language === "ar" ? "الملاحظات" : "Notes", icon: FileText },
     { key: "draw", label: language === "ar" ? "الرسم" : "Draw", icon: PenTool },
     { key: "pomodoro", label: language === "ar" ? "بومودورو" : "Pomodoro", icon: Timer },
+    { key: "calculator", label: language === "ar" ? "الحاسبة" : "Calculator", icon: Calculator },
+
   ];
 
   // إغلاق القوائم عند الضغط خارجها
