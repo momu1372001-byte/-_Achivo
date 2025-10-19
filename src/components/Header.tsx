@@ -7,7 +7,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ language }) => {
   const texts = {
-    ar: { appName: "منظم المهام" },
+    ar: { appName: " Achievo" },
     en: { appName: "Task Organizer" },
   };
 
