@@ -407,9 +407,15 @@ export default function SmartCalculatorProfessional(): JSX.Element {
                     <div className="text-sm text-red-500">{currency.error}</div>
                   ) : currency.result ? (
                     <div className="space-y-1">
-                      <div className="font-semibold text-2xl sm:text-3xl text-blue-700 dark:text-blue-300">
-                        {`${formatNumberForDisplay(currency.amount)} ${currency.from} = ${formatNumberForDisplay(currency.result)} ${currency.to}`}
-                      
+                     <div
+  className="font-semibold text-2xl sm:text-3xl text-blue-700 dark:text-blue-300 text-center"
+  dir="ltr"
+>
+  {`${formatNumberForDisplay(currency.amount)} ${currency.from} = ${formatNumberForDisplay(currency.result)} ${currency.to}`}
+
+
+                   
+
                       
                       </div>
                       {currency.rate !== null && (
