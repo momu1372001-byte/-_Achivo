@@ -272,14 +272,15 @@ export default function SmartCalculatorProfessional(): JSX.Element {
   const filteredCurrencies = useMemo(()=> CURRENCIES, []);
 
 
-  const formatNumberForDisplay = (v: string|number) => {
+  const formatNumberForDisplay = (v: string | number) => {
   const n = Number(v);
   if (!isFinite(n)) return String(v);
-  // show only ONE decimal digit
+  // عرض رقم واحد بعد العلامة العشرية
   const fixed = n.toFixed(1);
   const parts = fixed.split(".");
-  parts[0] = Number(parts[0]).toLocaleString();
-  parts[1] = parts[1].replace(/0+$/, ""); // remove trailing zeros
+  // إجبار عرض الأرقام بالإنجليزية فقط
+  parts[0] = Number(parts[0]).toLocaleString("en-US");
+  parts[1] = parts[1].replace(/0+$/, "");
   return parts[1] ? `${parts[0]}.${parts[1]}` : parts[0];
 };
 
