@@ -1,137 +1,113 @@
-// SmartCalculator.tsx
-import React, { useEffect, useMemo, useState } from "react";
+// src/components/SmartCalculatorProfessional.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { evaluate, format as mathFormat } from "mathjs";
 import { History, RefreshCw, ArrowLeftRight } from "lucide-react";
 
 /**
- * SmartCalculator.tsx
- * - لوحة مفاتيح مشتركة + لوحات وضعية فريدة (no overlap)
- * - كل الأزرار تعمل، لا تكرار بين الأوضاع
- * - ثابت (non-moving UI)
+ * SmartCalculatorProfessional.tsx
+ * - React + TypeScript + Tailwind
+ * - Uses mathjs for evaluation (precise, scientific)
+ * - Single page with two tabs: Calculator (iOS-like) & Currency Converter (dropdowns)
+ * - Mobile-first responsive layout
  */
 
-/* ---------- constants ---------- */
-const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "EGP", "AED", "SAR", "CAD", "AUD", "CHF"];
+/* --------------------------- Currencies --------------------------- */
+const CURRENCIES = [
+  "USD","EUR","GBP","JPY","EGP","AED","SAR","CAD","AUD","CHF","CNY","INR","KRW","TRY","BRL","ZAR"
+] as const;
+type CurrencyCode = (typeof CURRENCIES)[number];
 
-/* ---------- helpers ---------- */
+const CURRENCY_NAMES: Record<string,string> = {
+  USD: "US Dollar", EUR: "Euro", GBP: "British Pound", JPY: "Japanese Yen",
+  EGP: "Egyptian Pound", AED: "UAE Dirham", SAR: "Saudi Riyal",
+  CAD: "Canadian Dollar", AUD: "Australian Dollar", CHF: "Swiss Franc",
+  CNY: "Chinese Yuan", INR: "Indian Rupee", KRW: "South Korean Won",
+  TRY: "Turkish Lira", BRL: "Brazilian Real", ZAR: "South African Rand",
+};
+
+const FLAG_EMOJI: Record<string,string> = {
+  USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", EGP: "🇪🇬",
+  AED: "🇦🇪", SAR: "🇸🇦", CAD: "🇨🇦", AUD: "🇦🇺", CHF: "🇨🇭",
+  CNY: "🇨🇳", INR: "🇮🇳", KRW: "🇰🇷", TRY: "🇹🇷", BRL: "🇧🇷", ZAR: "🇿🇦",
+};
+
 function safeNumber(v: unknown) {
   return typeof v === "number" && isFinite(v);
 }
 
-/* ========== useCalculator Hook ========== */
+/* ===================== useCalculator (mathjs) ===================== */
 function useCalculator() {
   const [expr, setExpr] = useState<string>("");
   const [display, setDisplay] = useState<string>("0");
+  const [history, setHistory] = useState<{expr:string;result:string}[]>([]);
   const [memory, setMemory] = useState<number>(0);
-  const [history, setHistory] = useState<{ expr: string; result: string }[]>([]);
   const [error, setError] = useState<string>("");
 
   const fmt = (n: number) => {
-    if (!isFinite(n)) return "Error";
-    return Number.parseFloat(n.toPrecision(12)).toString();
+    try {
+      // use mathjs formatting for consistent precision
+      return mathFormat(n, { precision: 14 });
+    } catch {
+      return String(n);
+    }
   };
 
-  const append = (val: string) => {
+  const append = (s: string) => {
     setError("");
-    if (!val) return;
-    // منع تكرار دالة متبوعة بنفس اسمها (مثال: "sin(" ثم "sin(")
-    const fnName = val.match(/^([a-zA-Z]+)\(?/)?.[1];
-    const lastFn = expr.match(/([a-zA-Z]+)\($/)?.[1];
-    if (fnName && lastFn && fnName === lastFn) return;
-    setExpr((p) => p + val);
-    setDisplay((p) => (p === "0" ? val : p + val));
+    setExpr((p) => {
+      // avoid leading zero weirdness
+      if (p === "0" && /^[0-9.]$/.test(s)) return s;
+      return p + s;
+    });
+    setDisplay((p) => (p === "0" && /^[0-9.]$/.test(s) ? s : (p === "0" ? s : p + s)));
   };
 
-  const clearAll = () => {
-    setExpr("");
-    setDisplay("0");
-    setError("");
-  };
+  const clearAll = () => { setExpr(""); setDisplay("0"); setError(""); };
   const backspace = () => {
     setExpr((p) => {
-      const next = p.slice(0, -1);
+      const next = p.slice(0,-1);
       setDisplay(next || "0");
       return next;
     });
   };
 
-  const evaluateExpression = (input: string) => {
+  const evaluateExpr = (input: string) => {
     const raw = (input || "").trim();
     if (!raw) return 0;
-    // تحويل رموز العرض لرموز JS أو دوال معرفة
-    let s = raw
-      .replace(/×/g, "*")
-      .replace(/÷/g, "/")
-      // نستخدم ^ للرفع (power) باستبداله بعد ذلك إلى **
-      .replace(/\^/g, "**")
-      .replace(/\bπ\b|\bPI\b|\bpi\b/g, "PI")
-      .replace(/\be\b/g, "E");
+    // replace common symbols for user convenience
+    let s = raw.replace(/×/g,"*").replace(/÷/g,"/").replace(/π/g,"pi").replace(/\^/g,"^");
+    // percent: 50% => 0.5
     s = s.replace(/(\d+(\.\d+)?)%/g, "($1/100)");
-    s = s
-      .replace(/\blog\(/g, "log10(")
-      .replace(/\bln\(/g, "ln(")
-      .replace(/\bsqrt\(/g, "sqrt(")
-      .replace(/\babs\(/g, "abs(")
-      .replace(/\bexp\(/g, "exp(")
-      .replace(/\bpow\(/g, "pow(");
-
-    // السماح بحروف/أرقام/مسافات وبعض الرموز (&|~) للعمليات البتية
-    if (!/^[0-9+\-*/()., _%A-Za-z*&|~]*$/.test(s)) {
+    // safe check (allow letters for functions)
+    if (!/^[0-9+\-*/()., _%A-Za-z^!]*$/.test(s)) {
       throw new Error("Unsafe characters");
     }
-
-    // إغلاق الأقواس المفتوحة تلقائياً
-    const open = (s.match(/\(/g) || []).length;
-    const close = (s.match(/\)/g) || []).length;
-    if (open > close) s = s + ")".repeat(open - close);
-
-    const PI = Math.PI;
-    const E = Math.E;
-
-    // دوال مساعدة متاحة داخل التعبير
-    const helpers: Record<string, Function> = {
-      sin: (x: number) => Math.sin(x),
-      cos: (x: number) => Math.cos(x),
-      tan: (x: number) => Math.tan(x),
-      asin: (x: number) => Math.asin(x),
-      acos: (x: number) => Math.acos(x),
-      atan: (x: number) => Math.atan(x),
-      sqrt: (x: number) => Math.sqrt(x),
-      abs: (x: number) => Math.abs(x),
-      ln: (x: number) => Math.log(x),
-      log10: (x: number) => (Math.log10 ? Math.log10(x) : Math.log(x) / Math.LN10),
-      exp: (x: number) => Math.exp(x),
-      pow: (a: number, b: number) => Math.pow(a, b),
-      xor: (a: number, b: number) => (a | 0) ^ (b | 0), // لنستعمل xor() في وضع المبرمج
-      PI,
-      E,
-    };
-
-    // منع كلمات خطيرة
-    if (/\b(window|global|process|constructor|self|document|require|module|eval|Function)\b/.test(s)) {
-      throw new Error("Unsafe");
-    }
-
+    // evaluate with mathjs
     try {
-      const fn = new Function(...Object.keys(helpers), `return (${s});`);
-      // @ts-ignore
-      const result = fn(...Object.values(helpers));
-      if (typeof result !== "number" || !isFinite(result)) throw new Error("Math error");
-      return result as number;
-    } catch (e: any) {
+      const res = evaluate(s); // mathjs evaluate
+      if (typeof res === "number") {
+        if (!isFinite(res)) throw new Error("Math error");
+        return res;
+      }
+      // mathjs may return BigNumber etc. convert to number if possible
+      const num = Number(res as any);
+      if (!isFinite(num)) throw new Error("Math error");
+      return num;
+    } catch (e:any) {
       throw new Error("Invalid expression");
     }
   };
 
-  const evaluate = () => {
+  const evaluateAndStore = () => {
     try {
-      const val = evaluateExpression(expr || display);
+      const val = evaluateExpr(expr || display);
       const res = fmt(val);
       setDisplay(res);
       setExpr(res);
-      setHistory((h) => [{ expr: expr || display, result: res }, ...h].slice(0, 200));
+      setHistory((h) => [{expr: expr||display, result: res}, ...h].slice(0,200));
       setError("");
       return res;
-    } catch (e: any) {
+    } catch (e:any) {
       setError(e?.message || "Invalid expression");
       setDisplay("Error");
       throw e;
@@ -140,9 +116,11 @@ function useCalculator() {
 
   const toggleSign = () => {
     try {
-      const v = evaluateExpression(expr || display);
-      setExpr(String(-v));
-      setDisplay(String(-v));
+      const v = evaluateExpr(expr || display);
+      const neg = -v;
+      const s = fmt(neg);
+      setExpr(s);
+      setDisplay(s);
       setError("");
     } catch {
       setError("Invalid");
@@ -152,83 +130,57 @@ function useCalculator() {
   const memoryClear = () => setMemory(0);
   const memoryRecall = () => setExpr((p) => p + String(memory));
   const memoryAdd = () => {
-    try {
-      setMemory((m) => m + evaluateExpression(expr || display));
-    } catch {
-      setError("Invalid");
-    }
+    try { setMemory((m) => m + evaluateExpr(expr || display)); } catch { setError("Invalid"); }
   };
   const memorySub = () => {
-    try {
-      setMemory((m) => m - evaluateExpression(expr || display));
-    } catch {
-      setError("Invalid");
-    }
+    try { setMemory((m) => m - evaluateExpr(expr || display)); } catch { setError("Invalid"); }
   };
 
   return {
-    expr,
-    setExpr,
-    display,
-    setDisplay,
-    memory,
-    history,
-    setHistory,
-    error,
-    setError,
-    append,
-    clearAll,
-    backspace,
-    toggleSign,
-    memoryClear,
-    memoryRecall,
-    memoryAdd,
-    memorySub,
-    evaluate,
-    fmt,
+    expr, setExpr, display, setDisplay, history, setHistory, memory,
+    error, setError, append, clearAll, backspace, evaluateAndStore, toggleSign,
+    memoryClear, memoryRecall, memoryAdd, memorySub, fmt
   };
 }
 
-/* ========== useCurrency Hook ========== */
+/* ===================== useCurrency (open.er-api fallback) ===================== */
 function useCurrency() {
-  const [from, setFrom] = useState<string>("USD");
-  const [to, setTo] = useState<string>("EGP");
-  const [amount, setAmount] = useState<string>("1");
-  const [rate, setRate] = useState<number | null>(null);
+  const [from, setFrom] = useState<CurrencyCode>("USD");
+  const [to, setTo] = useState<CurrencyCode>("EGP");
+  const [amount, setAmount] = useState<string>("100");
+  const [rate, setRate] = useState<number|null>(null);
   const [result, setResult] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
+  const controllerRef = useRef<AbortController|null>(null);
+
   const fetchRateAndConvert = async (f = from, t = to, amt = parseFloat(amount)) => {
     setError("");
     if (!f || !t) return;
-    if (isNaN(amt)) {
-      setResult("");
-      return;
-    }
+    if (isNaN(amt)) { setResult(""); return; }
     setLoading(true);
+    controllerRef.current?.abort();
+    controllerRef.current = new AbortController();
     try {
-      const url = `https://api.exchangerate.host/convert?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}&amount=${encodeURIComponent(String(amt))}`;
-      const res = await fetch(url);
+      const url = `https://open.er-api.com/v6/latest/${encodeURIComponent(f)}`;
+      const res = await fetch(url, { signal: controllerRef.current.signal });
+      if (!res.ok) throw new Error("Network error");
       const data = await res.json();
-      if (data && safeNumber(data.result)) {
-        setRate(typeof data.info === "object" && safeNumber(data.info?.rate) ? data.info.rate : null);
-        setResult(Number(data.result).toFixed(6));
+      const r = data?.rates?.[t];
+      if (safeNumber(r)) {
+        setRate(r);
+        const conv = amt * r;
+        setResult(conv.toString());
       } else {
-        const fb = await fetch(`https://api.exchangerate.host/latest?base=${encodeURIComponent(f)}&symbols=${encodeURIComponent(t)}`);
-        const fd = await fb.json();
-        const r = fd?.rates?.[t];
-        if (safeNumber(r)) {
-          setRate(r);
-          setResult((amt * r).toFixed(6));
-        } else {
-          setResult("");
-          setError("فشل في جلب سعر الصرف");
-        }
+        setRate(null);
+        setResult("");
+        setError("فشل في جلب سعر الصرف");
       }
-    } catch (e) {
+    } catch (e:any) {
+      if (e?.name === "AbortError") return;
       console.error(e);
-      setError("خطأ في الاتصال");
+      setError("خطأ في الاتصال أو في API");
       setResult("");
     } finally {
       setLoading(false);
@@ -236,261 +188,266 @@ function useCurrency() {
   };
 
   useEffect(() => {
-    const id = setTimeout(() => {
-      fetchRateAndConvert();
-    }, 350);
+    const id = setTimeout(()=> fetchRateAndConvert(), 300);
     return () => clearTimeout(id);
-  }, [from, to, amount]);
+  }, [from,to,amount]);
 
   const swap = () => {
     const old = from;
     setFrom(to);
     setTo(old);
-    setTimeout(() => fetchRateAndConvert(to, old, parseFloat(amount)), 0);
+    setTimeout(()=> fetchRateAndConvert(to, old, parseFloat(amount)), 0);
   };
 
-  return {
-    from,
-    setFrom,
-    to,
-    setTo,
-    amount,
-    setAmount,
-    rate,
-    result,
-    loading,
-    error,
-    fetchRateAndConvert,
-    swap,
-  };
+  return { from, setFrom, to, setTo, amount, setAmount, rate, result, loading, error, fetchRateAndConvert, swap };
 }
 
-/* ========== Main Component ========== */
-export default function SmartCalculator(): JSX.Element {
-  const [mode, setMode] = useState<"calculator" | "converter">("calculator");
-  const [calcTab, setCalcTab] = useState<"standard" | "scientific" | "programmer">("standard");
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+/* ===================== Main Component ===================== */
+export default function SmartCalculatorProfessional(): JSX.Element {
+  const [mode, setMode] = useState<"calculator"|"converter">("calculator");
+  const [calcTab, setCalcTab] = useState<"standard"|"scientific"|"programmer">("standard");
+  const [showHistory, setShowHistory] = useState(false);
 
   const calc = useCalculator();
   const currency = useCurrency();
 
-  // --- unique keys (no overlap) ---
-  const scientificKeys = ["sin(", "cos(", "tan(", "asin(", "acos(", "atan(", "ln(", "log10(", "sqrt(", "abs(", "exp(", "pow(" , "PI"];
-  const programmerKeys = ["BIN", "DEC", "HEX", "AND", "OR", "XOR", "NOT"];
-
-  // --- common keypad (shared, only here) ---
+  const scientificKeys = ["sin(", "cos(", "tan(", "asin(", "acos(", "atan(", "sqrt(", "log(", "ln(", "pow(", "pi", "e"];
+  const programmerKeys = ["BIN","DEC","HEX","AND","OR","XOR","NOT"];
   const commonKeys = [
-    ["MC", "MR", "M+", "M-"],
-    ["(", ")", "C", "⌫"],
-    ["7", "8", "9", "÷"],
-    ["4", "5", "6", "×"],
-    ["1", "2", "3", "-"],
-    ["±", "0", ".", "+"],
-    ["%", "^", "=", ""],
+    ["MC","MR","M+","M-"],
+    ["(",")","C","⌫"],
+    ["7","8","9","÷"],
+    ["4","5","6","×"],
+    ["1","2","3","-"],
+    ["±","0",".","+"],
+    ["%","^","Ans","="]
   ];
 
-  // handlers
-  const handleCommonKey = (k: string) => {
+  const handleCommon = (k: string) => {
     if (!k) return;
-    switch (k) {
-      case "C":
-        calc.clearAll();
-        break;
-      case "⌫":
-        calc.backspace();
-        break;
-      case "=":
-        try { calc.evaluate(); } catch {}
-        break;
-      case "±":
-        calc.toggleSign();
-        break;
-      case "MC":
-        calc.memoryClear();
-        break;
-      case "MR":
-        calc.memoryRecall();
-        break;
-      case "M+":
-        calc.memoryAdd();
-        break;
-      case "M-":
-        calc.memorySub();
-        break;
-      default:
-        // مباشرة نضيف الرموز كما هي؛ evaluateExpression يتعامل مع × ÷ ^ %
-        calc.append(k);
+    switch(k) {
+      case "C": calc.clearAll(); break;
+      case "⌫": calc.backspace(); break;
+      case "=": try { calc.evaluateAndStore(); } catch{} break;
+      case "±": calc.toggleSign(); break;
+      case "MC": calc.memoryClear(); break;
+      case "MR": calc.memoryRecall(); break;
+      case "M+": calc.memoryAdd(); break;
+      case "M-": calc.memorySub(); break;
+      case "Ans": if (calc.history[0]) calc.append(calc.history[0].result); break;
+      default: calc.append(k);
     }
   };
 
-  const handleScientificKey = (k: string) => {
-    // append function tokens (تنتهي بـ "(" لسهولة إدخال المعامل)
-    calc.append(k);
+  const handleScientific = (k: string) => {
+    // for functions that need parentheses, append '(' if not present
+    if (/(sin|cos|tan|asin|acos|atan|sqrt|log|ln|pow)\($/.test(k)) {
+      calc.append(k);
+      return;
+    }
+    // constants
+    if (k === "pi") calc.append("pi");
+    else if (k === "e") calc.append("e");
+    else calc.append(k);
   };
 
-  const handleProgrammerKey = (k: string) => {
+  const handleProgrammer = (k: string) => {
     if (k === "BIN" || k === "DEC" || k === "HEX") {
       try {
         const num = Number(calc.expr || calc.display);
         if (isNaN(num)) throw new Error();
-        if (k === "BIN") calc.setDisplay((num | 0).toString(2));
+        if (k === "BIN") calc.setDisplay((num|0).toString(2));
         if (k === "DEC") calc.setDisplay(String(num));
-        if (k === "HEX") calc.setDisplay((num | 0).toString(16).toUpperCase());
+        if (k === "HEX") calc.setDisplay((num|0).toString(16).toUpperCase());
         calc.setExpr(String(num));
-      } catch {
-        calc.setError("Invalid");
-      }
+      } catch { calc.setError("Invalid"); }
       return;
     }
-    // لعمليات بتية نستخدم رموز أو دالة xor
-    if (k === "AND") calc.append("&");
-    else if (k === "OR") calc.append("|");
-    else if (k === "XOR") calc.append(" xor "); // دالة xor موجودة في helpers
-    else if (k === "NOT") calc.append("~");
+    if (k === "AND") calc.append(" & ");
+    if (k === "OR") calc.append(" | ");
+    if (k === "XOR") calc.append(" xor ");
+    if (k === "NOT") calc.append(" ~ ");
+  };
+
+  const filteredCurrencies = useMemo(()=> CURRENCIES, []);
+
+  const formatNumberForDisplay = (v: string|number) => {
+    const n = Number(v);
+    if (!isFinite(n)) return String(v);
+    // show with thousand separators and up to 6 decimals trimmed
+    const fixed = n.toFixed(6);
+    const parts = fixed.split(".");
+    parts[0] = Number(parts[0]).toLocaleString();
+    parts[1] = parts[1].replace(/0+$/, "");
+    return parts[1] ? `${parts[0]}.${parts[1]}` : parts[0];
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 space-y-4">
-
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 p-4 flex items-start justify-center">
+      <div className="w-full max-w-md mx-auto">
+        <div className="backdrop-blur-sm bg-white/70 dark:bg-gray-900/60 rounded-2xl shadow-xl p-4">
           {/* header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2">
-              <button onClick={() => setMode("calculator")} className={`px-3 py-2 rounded-md text-sm ${mode === "calculator" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700"}`}>الآلة الحاسبة</button>
-              <button onClick={() => setMode("converter")} className={`px-3 py-2 rounded-md text-sm ${mode === "converter" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700"}`}>سعر الصرف</button>
+              <button onClick={() => setMode("calculator")} className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${mode==="calculator" ? "bg-white shadow-md dark:bg-gray-800 text-blue-600" : "bg-transparent text-gray-600 dark:text-gray-300"}`}>الآلة الحاسبة</button>
+              <button onClick={() => setMode("converter")} className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${mode==="converter" ? "bg-white shadow-md dark:bg-gray-800 text-blue-600" : "bg-transparent text-gray-600 dark:text-gray-300"}`}>سعر الصرف</button>
             </div>
 
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowHistoryModal(true)} title="سجل العمليات" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                <History size={18} />
-              </button>
+              <button title="سجل العمليات" onClick={() => setShowHistory(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"><History size={18} /></button>
             </div>
           </div>
 
-          {/* main (ثابت، non-moving) */}
-          <div className="grid grid-cols-1 gap-4">
+          {/* body */}
+          <div className="space-y-4">
             {mode === "calculator" ? (
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                {/* tabs */}
-                <div className="flex border-b mb-3">
-                  <button onClick={() => setCalcTab("standard")} className={`px-3 py-2 -mb-px font-medium ${calcTab === "standard" ? "border-b-2 border-blue-500 text-blue-600 bg-white dark:bg-gray-800" : "border-b-2 border-transparent text-gray-600 hover:text-blue-600"}`}>عادي</button>
-                  <button onClick={() => setCalcTab("scientific")} className={`px-3 py-2 -mb-px font-medium ${calcTab === "scientific" ? "border-b-2 border-blue-500 text-blue-600 bg-white dark:bg-gray-800" : "border-b-2 border-transparent text-gray-600 hover:text-blue-600"}`}>علمي</button>
-                  <button onClick={() => setCalcTab("programmer")} className={`px-3 py-2 -mb-px font-medium ${calcTab === "programmer" ? "border-b-2 border-blue-500 text-blue-600 bg-white dark:bg-gray-800" : "border-b-2 border-transparent text-gray-600 hover:text-blue-600"}`}>مبرمج</button>
+              /* CALCULATOR */
+              <div className="rounded-xl p-3 bg-white dark:bg-gray-800 shadow-inner">
+                <div className="flex gap-2 mb-3">
+                  <button onClick={() => setCalcTab("standard")} className={`flex-1 py-2 rounded-md text-sm font-medium ${calcTab==="standard" ? "bg-gradient-to-r from-white to-slate-100 dark:from-gray-700 dark:to-gray-700 shadow-md text-gray-800 dark:text-white" : "bg-transparent text-gray-600 dark:text-gray-300"}`}>عادي</button>
+                  <button onClick={() => setCalcTab("scientific")} className={`flex-1 py-2 rounded-md text-sm font-medium ${calcTab==="scientific" ? "bg-gradient-to-r from-white to-slate-100 dark:from-gray-700 dark:to-gray-700 shadow-md text-gray-800 dark:text-white" : "bg-transparent text-gray-600 dark:text-gray-300"}`}>علمي</button>
+                  <button onClick={() => setCalcTab("programmer")} className={`flex-1 py-2 rounded-md text-sm font-medium ${calcTab==="programmer" ? "bg-gradient-to-r from-white to-slate-100 dark:from-gray-700 dark:to-gray-700 shadow-md text-gray-800 dark:text-white" : "bg-transparent text-gray-600 dark:text-gray-300"}`}>مبرمج</button>
                 </div>
 
                 {/* display */}
-                <div className="bg-white dark:bg-gray-800 p-3 rounded text-right font-mono text-2xl min-h-[72px] break-words">
-                  {calc.expr || calc.display}
-                </div>
-                {calc.error && <div className="text-red-500 text-sm mt-2">{calc.error}</div>}
-
-                {/* mode-specific unique keys (لا يوجد تكرار مع الـ common keypad) */}
-                <div className="mt-3">
-                  {calcTab === "scientific" && (
-                    <div className="grid grid-cols-4 gap-2">
-                      {scientificKeys.map((k) => (
-                        <button key={k} onClick={() => handleScientificKey(k)} className="py-2 rounded-lg bg-indigo-100 dark:bg-indigo-700 text-sm font-medium">
-                          {k.replace("log10(", "log(")}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {calcTab === "programmer" && (
-                    <div className="grid grid-cols-4 gap-2">
-                      {programmerKeys.map((k) => (
-                        <button key={k} onClick={() => handleProgrammerKey(k)} className="py-2 rounded-lg bg-amber-100 dark:bg-amber-700 text-sm font-medium">
-                          {k}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="bg-white/60 dark:bg-gray-900/50 rounded-xl p-3 mb-2">
+                  <div className="text-right text-xs text-gray-500 break-words">{calc.expr}</div>
+                  <div className="text-right font-mono text-3xl sm:text-4xl font-semibold break-words">{calc.display}</div>
+                  {calc.error && <div className="text-right text-red-500 text-sm mt-2">{calc.error}</div>}
                 </div>
 
-                {/* common keypad (shared, one place only) */}
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {commonKeys.flat().map((k, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleCommonKey(k)}
-                      className={`py-3 rounded-lg font-medium text-sm select-none
-                        ${k === "=" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
-                        ${["+", "-", "×", "÷", "^"].includes(k) ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
-                        ${["C", "⌫", "MC", "MR", "M+", "M-"].includes(k) ? "bg-gray-300 dark:bg-gray-700 hover:bg-gray-400" : ""}
-                        ${k && !["=", "+", "-", "×", "÷", "^", "C", "⌫", "MC", "MR", "M+", "M-"].includes(k) ? "bg-gray-200 dark:bg-gray-800 hover:bg-gray-300" : ""}`}
-                    >
-                      {k}
-                    </button>
-                  ))}
+                {/* scientific / programmer rows */}
+                {calcTab === "scientific" && (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {scientificKeys.map((k)=>(
+                      <button key={k} onClick={() => { 
+                        // append with parentheses when function-like
+                        if (/^(sin|cos|tan|asin|acos|atan|sqrt|log|ln|pow)\($/.test(k + "(")) {
+                          calc.append(k);
+                          return;
+                        }
+                        calc.append(k);
+                      }} className="py-2 rounded-lg text-sm font-medium bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-700 dark:to-violet-700 text-indigo-700 dark:text-white shadow-sm">
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {calcTab === "programmer" && (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {programmerKeys.map((k)=>(
+                      <button key={k} onClick={() => handleProgrammer(k)} className="py-2 rounded-lg text-sm font-medium bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-700 dark:to-orange-700 text-amber-800 dark:text-white shadow-sm">
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* keypad */}
+                <div className="grid grid-cols-4 gap-2">
+                  {commonKeys.flat().map((k,i)=>{
+                    const isOp = ["+","-","×","÷","^","="].includes(k);
+                    const isAction = ["C","⌫","MC","MR","M+","M-"].includes(k);
+                    let baseClass = "py-3 rounded-2xl font-semibold text-sm shadow-md focus:outline-none";
+                    if (k === "=") baseClass += " bg-gradient-to-br from-blue-600 to-indigo-600 text-white";
+                    else if (isOp) baseClass += " bg-gradient-to-br from-blue-400 to-blue-500 text-white";
+                    else if (isAction) baseClass += " bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
+                    else baseClass += " bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200";
+                    return (
+                      <button key={`${k}-${i}`} onClick={() => handleCommon(k)} className={baseClass}>
+                        {k}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                {/* converter */}
+              /* CONVERTER */
+              <div className="rounded-xl p-3 bg-white dark:bg-gray-800 shadow-inner">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-lg font-semibold">محول العملات</div>
+                  <div className="text-lg font-semibold">محول العملات (احترافي)</div>
                   <div className="flex gap-2">
-                    <button onClick={() => currency.fetchRateAndConvert?.()} title="تحديث" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"><RefreshCw size={16} /></button>
-                    <button onClick={() => currency.swap()} title="تبديل" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"><ArrowLeftRight size={16} /></button>
+                    <button onClick={() => currency.fetchRateAndConvert()} title="تحديث" className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><RefreshCw size={16} /></button>
+                    <button onClick={() => currency.swap()} title="تبديل" className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><ArrowLeftRight size={16} /></button>
                   </div>
                 </div>
 
-                <div className="grid gap-3">
-                  <div className="flex gap-2">
-                    <select value={currency.from} onChange={(e) => currency.setFrom(e.target.value)} className="flex-1 border rounded px-2 py-1 bg-white dark:bg-gray-700">
-                      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <div className="flex items-center px-2">→</div>
-                    <select value={currency.to} onChange={(e) => currency.setTo(e.target.value)} className="flex-1 border rounded px-2 py-1 bg-white dark:bg-gray-700">
-                      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="text-xs text-gray-500">المبلغ</label>
+                    <input inputMode="decimal" value={currency.amount} onChange={(e)=>currency.setAmount(e.target.value)} className="mt-1 w-full rounded-xl p-3 bg-white dark:bg-gray-900/40 text-right"/>
                   </div>
 
                   <div className="flex gap-2">
-                    <input type="number" value={currency.amount} onChange={(e) => currency.setAmount(e.target.value)} className="flex-1 border rounded px-2 py-1 bg-white dark:bg-gray-700" />
-                    <button onClick={() => currency.fetchRateAndConvert()} className="bg-blue-500 text-white px-3 rounded hover:bg-blue-600">تحويل</button>
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500">من</label>
+                      <select value={currency.from} onChange={(e)=>currency.setFrom(e.target.value as CurrencyCode)} className="mt-1 w-full rounded-xl p-3 bg-white dark:bg-gray-900/40">
+                        {filteredCurrencies.map(c => <option key={c} value={c}>{`${FLAG_EMOJI[c]} ${c} - ${CURRENCY_NAMES[c]}`}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500">إلى</label>
+                      <select value={currency.to} onChange={(e)=>currency.setTo(e.target.value as CurrencyCode)} className="mt-1 w-full rounded-xl p-3 bg-white dark:bg-gray-900/40">
+                        {filteredCurrencies.map(c => <option key={c} value={c}>{`${FLAG_EMOJI[c]} ${c} - ${CURRENCY_NAMES[c]}`}</option>)}
+                      </select>
+                    </div>
                   </div>
+                </div>
 
-                  <div className="text-sm">
-                    {currency.loading ? <span>جارٍ التحويل...</span> : currency.error ? <span className="text-red-500">{currency.error}</span> : currency.result ? (
-                      <div>
-                        <div className="font-semibold text-lg">
-                          {Number(currency.amount).toLocaleString()} {currency.from} = {Number(currency.result).toLocaleString()} {currency.to}
-                        </div>
-                        {currency.rate !== null && <div className="text-xs text-gray-500 mt-1">سعر الصرف: 1 {currency.from} = {currency.rate} {currency.to}</div>}
+                <div className="mt-4 text-center">
+                  {currency.loading ? (
+                    <div className="text-sm text-gray-500">جارٍ التحويل...</div>
+                  ) : currency.error ? (
+                    <div className="text-sm text-red-500">{currency.error}</div>
+                  ) : currency.result ? (
+                    <div className="space-y-1">
+                      <div className="font-semibold text-2xl sm:text-3xl text-blue-700 dark:text-blue-300">
+                        {`${formatNumberForDisplay(currency.amount)} ${currency.from} = ${formatNumberForDisplay(currency.result)} ${currency.to}`}
                       </div>
-                    ) : <span>ادخل مبلغًا صالحًا</span>}
-                  </div>
+                      {currency.rate !== null && (
+                        <div className="text-xs text-gray-500">{`1 ${currency.from} = ${formatNumberForDisplay(currency.rate)} ${currency.to}`}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">ادخل مبلغًا صالحًا ثم اضغط تحويل أو انتظر التحديث التلقائي</div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex justify-center">
+                  <button onClick={() => currency.fetchRateAndConvert()} className="px-4 py-2 rounded-xl bg-blue-600 text-white">تحويل</button>
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* history modal */}
-        {showHistoryModal && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold">سجل العمليات</h3>
-                <button onClick={() => setShowHistoryModal(false)} className="text-sm text-gray-500">إغلاق</button>
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {calc.history.length === 0 ? <div className="text-gray-500 text-center">لا يوجد سجلات بعد</div> : calc.history.map((h, i) => (
-                  <div key={i} className="p-2 rounded bg-gray-50 dark:bg-gray-900">
-                    <div className="text-xs text-gray-400">{h.expr}</div>
-                    <div className="font-medium">{h.result}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => { calc.setHistory([]); setShowHistoryModal(false); }} className="flex-1 bg-red-500 text-white py-2 rounded">مسح الكل</button>
-                <button onClick={() => setShowHistoryModal(false)} className="flex-1 bg-gray-200 py-2 rounded">إغلاق</button>
+          {/* history modal */}
+          {showHistory && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">سجل العمليات</h3>
+                  <button onClick={() => setShowHistory(false)} className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">إغلاق</button>
+                </div>
+                <div className="space-y-2">
+                  {calc.history.length === 0 ? <div className="text-gray-500 text-center">لا يوجد سجلات بعد</div> :
+                    calc.history.map((h,i)=>(
+                      <div key={i} className="p-2 rounded bg-gray-50 dark:bg-gray-900 flex justify-between">
+                        <div className="text-xs text-gray-400">{h.expr}</div>
+                        <div className="font-medium">{h.result}</div>
+                      </div>
+                    ))
+                  }
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => { calc.setHistory([]); setShowHistory(false);} } className="flex-1 bg-red-500 text-white py-2 rounded-xl">مسح الكل</button>
+                  <button onClick={() => setShowHistory(false)} className="flex-1 bg-gray-200 py-2 rounded-xl">إغلاق</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+        </div>
       </div>
     </div>
   );
