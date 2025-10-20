@@ -271,16 +271,20 @@ export default function SmartCalculatorProfessional(): JSX.Element {
 
   const filteredCurrencies = useMemo(()=> CURRENCIES, []);
 
+
   const formatNumberForDisplay = (v: string|number) => {
-    const n = Number(v);
-    if (!isFinite(n)) return String(v);
-    // show with thousand separators and up to 6 decimals trimmed
-    const fixed = n.toFixed(6);
-    const parts = fixed.split(".");
-    parts[0] = Number(parts[0]).toLocaleString();
-    parts[1] = parts[1].replace(/0+$/, "");
-    return parts[1] ? `${parts[0]}.${parts[1]}` : parts[0];
-  };
+  const n = Number(v);
+  if (!isFinite(n)) return String(v);
+  // show only ONE decimal digit
+  const fixed = n.toFixed(1);
+  const parts = fixed.split(".");
+  parts[0] = Number(parts[0]).toLocaleString();
+  parts[1] = parts[1].replace(/0+$/, ""); // remove trailing zeros
+  return parts[1] ? `${parts[0]}.${parts[1]}` : parts[0];
+};
+
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 p-4 flex items-start justify-center">
@@ -404,6 +408,8 @@ export default function SmartCalculatorProfessional(): JSX.Element {
                     <div className="space-y-1">
                       <div className="font-semibold text-2xl sm:text-3xl text-blue-700 dark:text-blue-300">
                         {`${formatNumberForDisplay(currency.amount)} ${currency.from} = ${formatNumberForDisplay(currency.result)} ${currency.to}`}
+                      
+                      
                       </div>
                       {currency.rate !== null && (
                         <div className="text-xs text-gray-500">{`1 ${currency.from} = ${formatNumberForDisplay(currency.rate)} ${currency.to}`}</div>
