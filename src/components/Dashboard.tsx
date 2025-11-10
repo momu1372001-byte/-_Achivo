@@ -1,224 +1,187 @@
 // src/components/Dashboard.tsx
-import React, { useEffect, useMemo } from 'react';
-import {
-  CheckCircle,
-  Clock,
-  Calendar,
-  Award,
-  AlertTriangle,
-  Bell,
-} from 'lucide-react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { Task, Goal } from '../types';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Target, ClipboardList, PenTool, Clock } from "lucide-react";
+import TaskManager from "./TaskManager";
+import Notes from "./Notes";
+import { Task, Goal, Category, Note } from "../types";
 
 interface DashboardProps {
   tasks: Task[];
   goals: Goal[];
-  language: string; // 👈 دعم اللغة
+  categories: Category[];
+  notes: Note[];
+  pomodoroSessions?: number;
+  language: "ar" | "en";
+  onTaskUpdate: (task: Task) => void;
+  onTaskDelete: (taskId: string) => void;
+  onTaskAdd: (task: Omit<Task, "id">) => void;
+  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ tasks, goals, language }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  tasks,
+  goals,
+  categories,
+  notes,
+  pomodoroSessions = 0,
+  language,
+  onTaskUpdate,
+  onTaskDelete,
+  onTaskAdd,
+  setNotes,
+}) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
-  // 🔹 تقسيم المهام
-  const doneTasks = tasks.filter((t) => t.status === 'done');
-  const inProgressTasks = tasks.filter((t) => t.status === 'in-progress');
-  const todoTasks = tasks.filter((t) => t.status === 'todo');
+  const hasData =
+    tasks.length > 0 ||
+    goals.length > 0 ||
+    notes.length > 0 ||
+    pomodoroSessions > 0;
 
-  // 🔹 المهام المتأخرة
-  const overdueTasks = tasks.filter(
-    (t) => t.dueDate && t.dueDate < new Date() && t.status !== 'done'
-  );
+  const features = [
+    {
+      title: t("المهام", "Tasks"),
+      value: tasks.length,
+      icon: ClipboardList,
+      color: "from-blue-500 to-indigo-500",
+      type: "tasks",
+    },
+    {
+      title: t("الأهداف", "Goals"),
+      value: goals.length,
+      icon: Target,
+      color: "from-green-500 to-emerald-500",
+      type: "goals",
+    },
+    {
+      title: t("الملاحظات", "Notes"),
+      value: notes.length,
+      icon: PenTool,
+      color: "from-purple-500 to-pink-500",
+      type: "notes",
+    },
+    {
+      title: t("جلسات التركيز", "Pomodoro Sessions"),
+      value: pomodoroSessions,
+      icon: Clock,
+      color: "from-orange-500 to-red-500",
+      type: "pomodoro",
+    },
+  ].filter((f) => f.value > 0);
 
-  // 🔹 معدل الإنجاز
-  const completionRate =
-    tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
-
-  // 🔹 توزيع المهام PieChart
-  const pieData = [
-    { name: t("منجزة", "Done"), value: doneTasks.length, color: '#22c55e' },
-    { name: t("قيد التنفيذ", "In progress"), value: inProgressTasks.length, color: '#3b82f6' },
-    { name: t("متبقية", "Remaining"), value: todoTasks.length, color: '#a1a1aa' },
-  ];
-
-  // 🔹 إنتاجية الأسبوع BarChart
-  const weekDays = language === "ar"
-    ? ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
-    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const weeklyData = weekDays.map((day, i) => {
-    const dayTasks = tasks.filter(
-      (t) => t.dueDate && t.dueDate.getDay() === i && t.status === 'done'
-    );
-    return { day, value: dayTasks.length };
-  });
-
-  // 🔹 Upcoming Tasks
-  const upcomingTasks = useMemo(() => {
-    return tasks
-      .filter((t) => t.dueDate && t.dueDate >= new Date())
-      .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
-      .slice(0, 5);
-  }, [tasks]);
-
-  // ✅ إشعارات
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(language === "ar" ? '🎉 مرحباً بك!' : "🎉 Welcome!", {
-        body: language === "ar" ? " ابدأ يومك بإنجاز المهام 👌 " : "Start your day by completing tasks 👌",
-        icon: '/icons/icon-192.png',
-      });
-
-      overdueTasks.forEach((task) => {
-        new Notification(language === "ar" ? '⚠️ مهمة متأخرة' : "⚠️ Overdue task", {
-          body: language === "ar"
-            ? `${task.title} كان موعدها ${task.dueDate!.toLocaleDateString('ar-EG')}`
-            : `${task.title} was due on ${task.dueDate!.toLocaleDateString('en-US')}`,
-          icon: '/icons/icon-192.png',
-        });
-      });
-
-      upcomingTasks.forEach((task) => {
-        const due = task.dueDate!;
-        const diff = due.getTime() - new Date().getTime();
-        if (diff <= 24 * 60 * 60 * 1000) {
-          new Notification(language === "ar" ? '⏰ تذكير بمهمة' : "⏰ Task reminder", {
-            body: language === "ar"
-              ? `${task.title} غداً (${due.toLocaleDateString('ar-EG')})`
-              : `${task.title} tomorrow (${due.toLocaleDateString('en-US')})`,
-            icon: '/icons/icon-192.png',
-          });
-        }
-      });
-    }
-  }, [overdueTasks, upcomingTasks, language]);
+  const [selectedFeature, setSelectedFeature] = useState<null | "tasks" | "goals" | "notes">(null);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-        <Bell className="w-7 h-7 text-theme" /> {t("لوحة التحكم", "Dashboard")}
-      </h2>
-
-      {/* 🔹 Cards Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[ 
-          {
-            title: t("منجزة", "Done"),
-            value: doneTasks.length,
-            total: tasks.length,
-            icon: CheckCircle,
-            color: 'text-green-600',
-            bg: 'bg-green-50 dark:bg-green-900/30',
-          },
-          {
-            title: t("قيد التنفيذ", "In progress"),
-            value: inProgressTasks.length,
-            icon: Clock,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50 dark:bg-blue-900/30',
-          },
-          {
-            title: t("متبقية", "Remaining"),
-            value: todoTasks.length,
-            icon: Calendar,
-            color: 'text-purple-600',
-            bg: 'bg-purple-50 dark:bg-purple-900/30',
-          },
-          {
-            title: t("متأخرة", "Overdue"),
-            value: overdueTasks.length,
-            icon: AlertTriangle,
-            color: 'text-red-600',
-            bg: 'bg-red-50 dark:bg-red-900/30',
-          },
-        ].map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={i}
-              className={`${stat.bg} border border-gray-200 dark:border-gray-700 rounded-xl p-6 flex justify-between items-center shadow-sm`}
-            >
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">{stat.title}</p>
-                <p className="font-bold">
-                  {stat.value}
-                  {stat.total && stat.title === t("منجزة", "Done") && (
-                    <span className="text-gray-400 dark:text-gray-500">/{stat.total}</span>
-                  )}
-                </p>
-              </div>
-              <Icon className={`w-10 h-10 ${stat.color}`} />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 🔹 Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* معدل الإنجاز */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-semibold">{t("معدل الإنجاز", "Completion rate")}</h3>
-            <Award className="text-yellow-500" />
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-            <div
-              className="bg-theme h-3 rounded-full"
-              style={{ width: `${completionRate}%` }}
-            ></div>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            {completionRate}% {t("مكتملة", "Completed")}
+    <div className="min-h-[85vh] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
+      {!hasData ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center"
+        >
+          <motion.div
+            className="text-6xl mb-4"
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            ✨
+          </motion.div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+            {t("ابدأ رحلتك اليوم!", "Start your journey today!")}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
+            {t(
+              "أضف هدفًا أو مهمة أو دوّن فكرة جديدة لتبدأ في تحقيق إنتاجيتك القصوى 💪",
+              "Add a goal, a task, or jot down a new idea to unlock your productivity 💪"
+            )}
           </p>
-        </div>
+        </motion.div>
+      ) : (
+        <div className="w-full max-w-6xl">
+          {/* كروت الميزات */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`p-6 rounded-2xl shadow-lg bg-gradient-to-br ${feature.color} text-white cursor-pointer`}
+                  onClick={() => setSelectedFeature(feature.type as any)}
+                >
+                  <div className="flex justify-between items-center">
+                    <Icon className="w-10 h-10 opacity-90" />
+                    <span className="text-4xl font-bold">{feature.value}</span>
+                  </div>
+                  <p className="mt-3 text-lg font-medium">{feature.title}</p>
+                </motion.div>
+              );
+            })}
+          </div>
 
-        {/* PieChart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="font-semibold mb-4">{t("توزيع المهام", "Tasks distribution")}</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={80} label>
-                {pieData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+          {/* تفاصيل المهام أو الأهداف أو الملاحظات */}
+          {selectedFeature === "tasks" && (
+            <div className="w-full mb-8">
+              <TaskManager
+                tasks={tasks}
+                categories={categories}
+                onTaskUpdate={onTaskUpdate}
+                onTaskDelete={onTaskDelete}
+                onTaskAdd={onTaskAdd}
+                language={language}
+              />
+              <button
+                onClick={() => setSelectedFeature(null)}
+                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                {t("إغلاق المهام", "Close Tasks")}
+              </button>
+            </div>
+          )}
 
-      {/* 🔹 Weekly Productivity + Upcoming Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* BarChart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="font-semibold mb-4">{t("إنتاجية الأسبوع", "Weekly productivity")}</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={weeklyData}>
-              <XAxis dataKey="day" stroke="#888" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value" fill="var(--theme-color)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          {selectedFeature === "goals" && (
+            <div className="w-full mb-8">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h3 className="text-xl font-bold mb-4">{t("الأهداف", "Goals")}</h3>
+                {goals.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-300">{t("لا توجد أهداف مسجلة", "No goals recorded")}</p>
+                ) : (
+                  goals.map((goal) => (
+                    <div key={goal.id} className="p-4 mb-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{goal.title}</h4>
+                      <p className="text-gray-600 dark:text-gray-300">{goal.description}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedFeature(null)}
+                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                {t("إغلاق الأهداف", "Close Goals")}
+              </button>
+            </div>
+          )}
 
-       
-      </div>
+          {selectedFeature === "notes" && (
+            <div className="w-full mb-8">
+              <Notes language={language} notes={notes} setNotes={setNotes} />
+              <button
+                onClick={() => setSelectedFeature(null)}
+                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                {t("إغلاق الملاحظات", "Close Notes")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

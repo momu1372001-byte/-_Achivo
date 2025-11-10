@@ -18,8 +18,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Calculator } from "lucide-react";
 
 interface Props {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab: Tabs;
+  setActiveTab: (tab: Tabs) => void;
   onOpenSettings: () => void;
   onOpenAI: () => void;
   language?: "ar" | "en";
