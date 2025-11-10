@@ -1,7 +1,13 @@
 // src/components/Notes.tsx
 import React, { useState } from "react";
 import { Plus, Trash2, Edit3, Save, X } from "lucide-react";
-import { Note } from "../types";
+
+type Note = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+};
 
 interface NotesProps {
   language: string;

@@ -149,16 +149,32 @@ export default function Goals(props: Props) {
       onGoalAdd(payload);
       return;
     }
-    const g: GoalItem = { id: Date.now().toString(), ...payload, updatedAt: Date.now() };
+    // Ensure all required fields are present
+    const g: GoalItem = { 
+      id: Date.now().toString(), 
+      title: payload.title ?? "", 
+      purpose: payload.purpose ?? "", 
+      startDate: payload.startDate, 
+      endDate: payload.endDate, 
+      completedDays: payload.completedDays ?? [], 
+      milestones: payload.milestones ?? [], 
+      updatedAt: Date.now(),
+      ...payload
+    };
     setFallbackGoals((s) => [g, ...s]);
   };
 
-  const updateGoal = (g: GoalItem) => {
+  const updateGoal = (g: Partial<GoalItem> & { id: string }) => {
+    // merge incoming partial update with the existing goal so callers can pass only changed fields
+    const allGoals = parentGoals && parentGoals.length > 0 ? parentGoals : fallbackGoals;
+    const existing = allGoals.find((x) => x.id === g.id) || ({} as GoalItem);
+    const merged: GoalItem = { ...existing, ...g, updatedAt: Date.now() };
+
     if (onGoalUpdate) {
-      onGoalUpdate(g);
+      onGoalUpdate(merged);
       return;
     }
-    setFallbackGoals((s) => s.map((x) => (x.id === g.id ? { ...g, updatedAt: Date.now() } : x)));
+    setFallbackGoals((s) => s.map((x) => (x.id === merged.id ? merged : x)));
   };
 
   const removeGoal = (id: string) => {
@@ -194,8 +210,8 @@ export default function Goals(props: Props) {
     };
 
     if (editingId) {
-      if (onGoalUpdate) onGoalUpdate({ id: editingId, ...base });
-      else updateGoal({ id: editingId, ...base });
+      if (onGoalUpdate) onGoalUpdate({ ...base, id: editingId } as GoalItem);
+      else updateGoal({ ...base, id: editingId });
     } else {
       if (onGoalAdd) onGoalAdd(base);
       else addGoal(base);

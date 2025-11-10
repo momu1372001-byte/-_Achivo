@@ -1,10 +1,24 @@
 // src/components/Dashboard.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Target, ClipboardList, PenTool, Clock } from "lucide-react";
 import TaskManager from "./TaskManager";
 import Notes from "./Notes";
 import { Task, Goal, Category } from "../types";
+
+// Recharts
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ReTooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
 
 interface DashboardProps {
   tasks: Task[];
@@ -17,6 +31,7 @@ interface DashboardProps {
   onTaskDelete: (taskId: string) => void;
   onTaskAdd: (task: Omit<Task, "id">) => void;
   setNotes: React.Dispatch<React.SetStateAction<any[]>>;
+  onOpenGoals?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -30,6 +45,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onTaskDelete,
   onTaskAdd,
   setNotes,
+  onOpenGoals,
 }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
@@ -45,32 +61,95 @@ export const Dashboard: React.FC<DashboardProps> = ({
       value: tasks.length,
       icon: ClipboardList,
       color: "from-blue-500 to-indigo-500",
-      type: "tasks",
+      type: "tasks" as const,
     },
     {
       title: t("الأهداف", "Goals"),
       value: goals.length,
       icon: Target,
       color: "from-green-500 to-emerald-500",
-      type: "goals",
+      type: "goals" as const,
     },
     {
       title: t("الملاحظات", "Notes"),
       value: notes.length,
       icon: PenTool,
       color: "from-purple-500 to-pink-500",
-      type: "notes",
+      type: "notes" as const,
     },
     {
       title: t("جلسات التركيز", "Pomodoro Sessions"),
       value: pomodoroSessions,
       icon: Clock,
       color: "from-orange-500 to-red-500",
-      type: "pomodoro",
+      type: "pomodoro" as const,
     },
   ].filter((f) => f.value > 0);
 
-  const [selectedFeature, setSelectedFeature] = useState<null | "tasks" | "goals" | "notes">(null);
+  type Selected = null | "tasks" | "goals" | "notes";
+  const [selectedFeature, setSelectedFeature] = useState<Selected>(null);
+
+  // ---------- وظائف مساعدة ----------
+  const isoToday = () => new Date().toISOString().split("T")[0];
+  const daysBetweenInclusive = (s?: string, e?: string) => {
+    if (!s || !e) return 0;
+    const start = new Date(s);
+    const end = new Date(e);
+    const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diff + 1);
+  };
+  const calcProgress = (g: any) => {
+    if (!g?.startDate || !g?.endDate) return 0;
+    const total = daysBetweenInclusive(g.startDate, g.endDate);
+    const done = (g.completedDays || []).length || 0;
+    return Math.min(100, Math.round((done / total) * 100));
+  };
+
+  // ---------- إحصائيات الأهداف ----------
+  const stats = useMemo(() => {
+    const total = (goals || []).length;
+    const perGoal = (goals || []).map((g) => ({ ...g, __progress: calcProgress(g) }));
+    const completedCount = perGoal.filter((g) => g.__progress >= 100).length;
+    const avgProgress = total === 0 ? 0 : Math.round(perGoal.reduce((s, g) => s + (g.__progress || 0), 0) / total);
+
+    const futureEnds = (goals || [])
+      .map((g) => g.endDate)
+      .filter(Boolean)
+      .map((d) => new Date(d as string))
+      .sort((a, b) => Number(a) - Number(b));
+
+    const nearest = futureEnds.length > 0 ? futureEnds[0].toISOString().split("T")[0] : null;
+
+    // Pie Chart data
+    const pieData = [
+      { name: t("منجز", "Completed"), value: completedCount },
+      { name: t("غير منجز", "Not Completed"), value: total - completedCount },
+    ];
+
+    // Line chart data آخر 7 أيام
+    const today = new Date();
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(today.getDate() - (6 - i));
+      const iso = d.toISOString().split("T")[0];
+      const completed = perGoal.filter((g) => (g.completedDays || []).includes(iso)).length;
+      return { date: iso, completed };
+    });
+
+    // Timeline
+    const timeline = perGoal
+      .map((g) => ({
+        ...g,
+        startDate: (goals.find(goal => goal.id === g.id)?.startDate) || "",
+        endDate: (goals.find(goal => goal.id === g.id)?.endDate) || "",
+      }))
+      .slice()
+      .sort((a, b) => new Date(a.startDate || "").getTime() - new Date(b.startDate || "").getTime());
+
+    return { total, completedCount, avgProgress, nearest, perGoal, pieData, last7Days, timeline };
+  }, [goals, language]);
+
+  const COLORS = ["#22c55e", "#e5e7eb"]; // أخضر ورمادي
 
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
@@ -113,7 +192,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                   className={`p-6 rounded-2xl shadow-lg bg-gradient-to-br ${feature.color} text-white cursor-pointer`}
-                  onClick={() => setSelectedFeature(feature.type as any)}
+                  // ✅ تعديل السلوك: الفتح والإغلاق بالضغط نفسه
+                  onClick={() =>
+                    setSelectedFeature((prev) => (prev === feature.type ? null : feature.type))
+                  }
                 >
                   <div className="flex justify-between items-center">
                     <Icon className="w-10 h-10 opacity-90" />
@@ -125,59 +207,79 @@ export const Dashboard: React.FC<DashboardProps> = ({
             })}
           </div>
 
-          {/* تفاصيل المهام أو الأهداف أو الملاحظات */}
-          {selectedFeature === "tasks" && (
-            <div className="w-full mb-8">
-              <TaskManager
-                tasks={tasks}
-                categories={categories}
-                onTaskUpdate={onTaskUpdate}
-                onTaskDelete={onTaskDelete}
-                onTaskAdd={onTaskAdd}
-                language={language}
-              />
-              <button
-                onClick={() => setSelectedFeature(null)}
-                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-              >
-                {t("إغلاق المهام", "Close Tasks")}
-              </button>
-            </div>
-          )}
-
+          {/* صفحة الأهداف والإحصائيات */}
           {selectedFeature === "goals" && (
-            <div className="w-full mb-8">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h3 className="text-xl font-bold mb-4">{t("الأهداف", "Goals")}</h3>
-                {goals.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-300">{t("لا توجد أهداف مسجلة", "No goals recorded")}</p>
-                ) : (
-                  goals.map((goal) => (
-                    <div key={goal.id} className="p-4 mb-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{goal.title}</h4>
-                      <p className="text-gray-600 dark:text-gray-300">{(goal as any).description ?? ""}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedFeature(null)}
-                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-              >
-                {t("إغلاق الأهداف", "Close Goals")}
-              </button>
-            </div>
-          )}
+            <div className="w-full mb-8 space-y-6">
+              {/* PieChart + LineChart + Timeline */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* PieChart */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold">{t("نسبة الإنجاز", "Completion Rate")}</h3>
+                    <button
+                      onClick={onOpenGoals}
+                      className="px-3 py-1 rounded bg-blue-600 text-white"
+                    >
+                      {t("إضافة هدف", "Add Goal")}
+                    </button>
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={stats.pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={70}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {stats.pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <ReTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
 
-          {selectedFeature === "notes" && (
-            <div className="w-full mb-8">
-              <Notes {...({ language, notes, setNotes } as any)} />
-              <button
-                onClick={() => setSelectedFeature(null)}
-                className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-              >
-                {t("إغلاق الملاحظات", "Close Notes")}
-              </button>
+                {/* LineChart */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                  <h3 className="text-lg font-bold mb-4">{t("تطور الأهداف الأسبوعي", "Weekly Goal Progress")}</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={stats.last7Days}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis allowDecimals={false} />
+                      <ReTooltip />
+                      <Line type="monotone" dataKey="completed" stroke="#22c55e" strokeWidth={3} dot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h3 className="text-lg font-bold mb-4">{t("خط زمني للأهداف", "Goals Timeline")}</h3>
+                <ul className="space-y-3">
+                  {stats.timeline.map((g) => (
+                    <li key={g.id} className="flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">{g.startDate} → {g.endDate}</span>
+                        <span className="font-medium">{g.title}</span>
+                        <span className="text-xs">{g.__progress}%</span>
+                      </div>
+                      {/* شريط التقدم المحسن */}
+                      <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-4 bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500"
+                          style={{ width: `${g.__progress}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>
@@ -185,3 +287,5 @@ export const Dashboard: React.FC<DashboardProps> = ({
     </div>
   );
 };
+
+export default Dashboard;

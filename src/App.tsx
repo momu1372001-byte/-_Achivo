@@ -5,7 +5,15 @@ import { Dashboard } from "./components/Dashboard";
 import { TaskManager } from "./components/TaskManager";
 import { Calendar } from "./components/Calendar";
 import Goals from "./components/Goals";
-import { Task, Category, Goal, Note } from "./types";
+import { Task, Category, Goal } from "./types";
+
+type Note = {
+  id: string;
+  title: string;
+  content?: string;
+  createdAt?: string;
+};
+
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
 const NotesAny = (Notes as unknown) as React.FC<any>;
@@ -220,6 +228,7 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
   onTaskUpdate={handleTaskUpdate}
   onTaskDelete={handleTaskDelete}
   onTaskAdd={handleTaskAdd}
+  onOpenGoals={() => setActiveTab("goals")}
 />
 
             
