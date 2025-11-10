@@ -1,15 +1,21 @@
 // src/components/Notes.tsx
 import React, { useState } from "react";
 import { Plus, Trash2, Edit3, Save, X } from "lucide-react";
-import { Note } from "../types";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string; // نخزن التاريخ كـ string عشان localStorage
+}
 
 interface NotesProps {
   language: string;
-  notes: Note[];
-  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
 }
 
-const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
+const Notes: React.FC<NotesProps> = ({ language }) => {
+  const [notes, setNotes] = useLocalStorage<Note[]>("user-notes", []);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -18,7 +24,7 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
 
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
-  // إضافة ملاحظة جديدة
+  // ✅ إضافة ملاحظة جديدة
   const addNote = () => {
     if (!newTitle.trim() && !newContent.trim()) return;
 
@@ -26,7 +32,7 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
       id: Date.now().toString(),
       title: newTitle || t("بدون عنوان", "Untitled"),
       content: newContent,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(), // نخزن string
     };
 
     setNotes([...notes, newNote]);
@@ -34,12 +40,12 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
     setNewContent("");
   };
 
-  // حذف ملاحظة
+  // ✅ حذف ملاحظة
   const deleteNote = (id: string) => {
     setNotes(notes.filter((n) => n.id !== id));
   };
 
-  // حفظ التعديلات
+  // ✅ حفظ التعديلات
   const saveEdit = (id: string) => {
     setNotes(
       notes.map((n) =>
@@ -55,7 +61,7 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h2 className="text-2xl font-bold mb-4">{t("📝 الملاحظات", "📝 Notes")}</h2>
 
-      {/* إضافة ملاحظة جديدة */}
+      {/* ✅ إضافة ملاحظة جديدة */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <input
           type="text"
@@ -79,7 +85,7 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
         </button>
       </div>
 
-      {/* عرض الملاحظات */}
+      {/* ✅ عرض الملاحظات */}
       <div className="space-y-4">
         {notes.length === 0 && (
           <p className="text-gray-500">{t("لا توجد ملاحظات", "No notes yet")}</p>
