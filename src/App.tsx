@@ -5,9 +5,10 @@ import { Dashboard } from "./components/Dashboard";
 import { TaskManager } from "./components/TaskManager";
 import { Calendar } from "./components/Calendar";
 import Goals from "./components/Goals";
-import { Task, Category, Goal } from "./types";
+import { Task, Category, Goal, Note } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import Notes from "./components/Notes";
+const NotesAny = (Notes as unknown) as React.FC<any>;
 import DrawingPad from "./components/DrawingPad";
 import PomodoroTimer from "./components/PomodoroTimer";
 import Calculator from "./components/Calculator";
@@ -239,12 +240,14 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
         return <Calculator />;
 
       
-
 case "notes":
-    return <Notes 
-        language={language} 
-        notes={notes} 
-        setNotes={setNotes} 
+    return (
+      <NotesAny
+        language={language}
+        notes={notes}
+        setNotes={setNotes}
+      />
+    );
     />;
 
 

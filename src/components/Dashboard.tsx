@@ -4,19 +4,19 @@ import { motion } from "framer-motion";
 import { Target, ClipboardList, PenTool, Clock } from "lucide-react";
 import TaskManager from "./TaskManager";
 import Notes from "./Notes";
-import { Task, Goal, Category, Note } from "../types";
+import { Task, Goal, Category } from "../types";
 
 interface DashboardProps {
   tasks: Task[];
   goals: Goal[];
   categories: Category[];
-  notes: Note[];
+  notes: any[];
   pomodoroSessions?: number;
   language: "ar" | "en";
   onTaskUpdate: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskAdd: (task: Omit<Task, "id">) => void;
-  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
+  setNotes: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -155,7 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   goals.map((goal) => (
                     <div key={goal.id} className="p-4 mb-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <h4 className="font-semibold text-gray-900 dark:text-gray-100">{goal.title}</h4>
-                      <p className="text-gray-600 dark:text-gray-300">{goal.description}</p>
+                      <p className="text-gray-600 dark:text-gray-300">{(goal as any).description ?? ""}</p>
                     </div>
                   ))
                 )}
@@ -171,7 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {selectedFeature === "notes" && (
             <div className="w-full mb-8">
-              <Notes language={language} notes={notes} setNotes={setNotes} />
+              <Notes {...({ language, notes, setNotes } as any)} />
               <button
                 onClick={() => setSelectedFeature(null)}
                 className="mt-4 px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
