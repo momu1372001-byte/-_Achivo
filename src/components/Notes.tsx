@@ -1,4 +1,3 @@
-// src/components/Notes.tsx
 import React, { useState } from "react";
 import { Plus, Trash2, Edit3, Save, X } from "lucide-react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -7,7 +6,7 @@ interface Note {
   id: string;
   title: string;
   content: string;
-  createdAt: string; // نخزن التاريخ كـ string عشان localStorage
+  createdAt: string;
 }
 
 interface NotesProps {
@@ -32,7 +31,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
       id: Date.now().toString(),
       title: newTitle || t("بدون عنوان", "Untitled"),
       content: newContent,
-      createdAt: new Date().toISOString(), // نخزن string
+      createdAt: new Date().toISOString(),
     };
 
     setNotes([...notes, newNote]);
@@ -137,7 +136,6 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                     language === "ar" ? "ar-EG" : "en-US"
                   )}
                 </p>
-
                 <div className="flex gap-2 mt-3 justify-end">
                   <button
                     onClick={() => {
@@ -149,7 +147,6 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
-
                   <button
                     onClick={() => deleteNote(note.id)}
                     className="p-1 text-red-600 hover:scale-110 transition-transform"
