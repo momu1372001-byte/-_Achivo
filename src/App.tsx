@@ -229,6 +229,7 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
   onTaskDelete={handleTaskDelete}
   onTaskAdd={handleTaskAdd}
   onOpenGoals={() => setActiveTab("goals")}
+   onOpenAddTask={() => setActiveTab("tasks")} 
 />
 
             

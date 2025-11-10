@@ -1,4 +1,5 @@
 // src/components/TaskManager.tsx
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Plus,
@@ -11,8 +12,10 @@ import {
   Play,
   Pause,
   Edit3,
+  ArrowLeft,
 } from "lucide-react";
 import { Task, Category } from "../types";
+import { useNavigate } from "react-router-dom"; // ✅ أضفنا useNavigate
 
 interface TaskManagerProps {
   tasks: Task[];
@@ -28,7 +31,6 @@ interface TaskManagerProps {
 const dateToInput = (d?: Date | string) => {
   if (!d) return "";
   const date = d instanceof Date ? d : new Date(d);
-  // keep local YYYY-MM-DD
   return date.toISOString().split("T")[0];
 };
 
@@ -42,6 +44,17 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   minimalView = false,
   language = "ar",
 }) => {
+     const navigate = useNavigate(); // ✅ استخدمنا useNavigate
+
+const handleGoBack = () => {
+  if (window.history.length > 1) {
+    navigate(-1);
+  } else {
+    navigate("/"); // fallback للصفحة الرئيسية
+  }
+};
+
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [taskBeingEdited, setTaskBeingEdited] = useState<Task | null>(null);
@@ -60,23 +73,19 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     description: "",
     priority: "medium" as const,
     category: defaultCategory,
-    // keep dueDate as string for input; convert to Date when creating payload
     dueDate: "",
   });
 
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Keep newTask.category in sync when categories change
   useEffect(() => {
     if (categories.length === 0) return;
     setNewTask((prev) => {
-      // if current category is not in categories, set to first
       if (!categories.find((c) => c.name === prev.category)) {
         return { ...prev, category: categories[0].name };
       }
       return prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]);
 
   const filteredTasks = tasks.filter((task) => {
@@ -125,7 +134,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   const handleEditTask = () => {
     if (!taskBeingEdited) return;
 
-    // Build updated task — ensure dueDate is Date | undefined
     const updatedTask: Task = {
       ...taskBeingEdited,
       title: taskBeingEdited.title.trim(),
@@ -184,6 +192,39 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      
+      <div className="mb-4">
+        
+        
+        <button
+        onClick={handleGoBack}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        {language === "ar" ? "رجوع" : "Back"}
+      </button>
+
+      
+
+        
+        
+        
+        
+        
+        
+
+
+
+
+
+
+        
+      </div>
+      
+      
+      
+      
+      
       {/* رأس الصفحة */}
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -253,6 +294,17 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+            {/* 🔙 زر الرجوع في الأعلى */}
+            <div className="flex justify-start mb-4">
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                {language === "ar" ? "رجوع" : "Back"}
+              </button>
+            </div>
+
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
               {language === "ar" ? "إضافة مهمة جديدة" : "Add New Task"}
             </h3>
@@ -343,7 +395,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       {/* عرض المهام */}
       <div className={`grid gap-4 ${taskView === "grid" ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
         {filteredTasks.map((task) => (
-          <div key={task.id} className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md ${task.status === "done" ? "opacity-75" : ""}`}>
+          <div
+            key={task.id}
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md ${
+              task.status === "done" ? "opacity-75" : ""
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <button
@@ -360,7 +417,11 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 </button>
 
                 <div className="flex-1">
-                  <h3 className={`font-semibold ${task.status === "done" ? "line-through text-gray-500" : "text-gray-900 dark:text-gray-100"}`}>
+                  <h3
+                    className={`font-semibold ${
+                      task.status === "done" ? "line-through text-gray-500" : "text-gray-900 dark:text-gray-100"
+                    }`}
+                  >
                     {task.title}
                   </h3>
 
@@ -369,12 +430,32 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                       {task.description && <p className="text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>}
 
                       <div className="flex items-center gap-4 mt-2">
-                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${task.priority === "high" ? "bg-red-100 text-red-700" : task.priority === "medium" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`}>
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full font-medium ${
+                            task.priority === "high"
+                              ? "bg-red-100 text-red-700"
+                              : task.priority === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
                           <Flag className="w-3 h-3 inline mr-1" />
-                          {task.priority === "high" ? (language === "ar" ? "عالية" : "High") : task.priority === "medium" ? (language === "ar" ? "متوسطة" : "Medium") : (language === "ar" ? "منخفضة" : "Low")}
+                          {task.priority === "high"
+                            ? language === "ar"
+                              ? "عالية"
+                              : "High"
+                            : task.priority === "medium"
+                            ? language === "ar"
+                              ? "متوسطة"
+                              : "Medium"
+                            : language === "ar"
+                            ? "منخفضة"
+                            : "Low"}
                         </span>
 
-                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">{task.category}</span>
+                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                          {task.category}
+                        </span>
 
                         {task.dueDate && (
                           <span className="text-xs text-gray-500 flex items-center">
@@ -386,7 +467,10 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                         {task.timeSpent && task.timeSpent > 0 && (
                           <span className="text-xs text-gray-500 flex items-center">
                             <Clock className="w-3 h-3 mr-1" />
-                            {Math.floor(task.timeSpent / 60)}{language === "ar" ? "س " : "h "}{task.timeSpent % 60}{language === "ar" ? "د" : "m"}
+                            {Math.floor(task.timeSpent / 60)}
+                            {language === "ar" ? "س " : "h "}
+                            {task.timeSpent % 60}
+                            {language === "ar" ? "د" : "m"}
                           </span>
                         )}
                       </div>
@@ -399,7 +483,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 {!minimalView && (
                   <div className="flex items-center gap-2">
                     {activeTimer === task.id && <span className="text-sm font-mono text-blue-600">{formatTime(timerSeconds)}</span>}
-                    <button onClick={() => toggleTimer(task.id)} className={`p-2 rounded-lg transition-colors duration-200 ${activeTimer === task.id ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-green-100 text-green-600 hover:bg-green-200"}`}>
+                    <button
+                      onClick={() => toggleTimer(task.id)}
+                      className={`p-2 rounded-lg transition-colors duration-200 ${
+                        activeTimer === task.id ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-green-100 text-green-600 hover:bg-green-200"
+                      }`}
+                    >
                       {activeTimer === task.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     </button>
                   </div>
@@ -426,7 +515,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         {filteredTasks.length === 0 && (
           <div className="text-center py-12 col-span-full">
             <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{language === "ar" ? "لا توجد مهام" : "No tasks"}</h3>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+              {language === "ar" ? "لا توجد مهام" : "No tasks"}
+            </h3>
             <p className="text-gray-600 dark:text-gray-300">
               {searchTerm || filterPriority !== "all" || filterCategory !== "all"
                 ? language === "ar"
@@ -444,7 +535,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       {showEditForm && taskBeingEdited && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{language === "ar" ? "تعديل المهمة" : "Edit Task"}</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              {language === "ar" ? "تعديل المهمة" : "Edit Task"}
+            </h3>
 
             <form
               onSubmit={(e) => {
@@ -502,9 +595,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 type="date"
                 value={dateToInput(taskBeingEdited.dueDate)}
                 onChange={(e) =>
-                  
-                  
-                  setTaskBeingEdited((prev) => (prev ? { ...prev, dueDate: e.target.value ? new Date(e.target.value ): undefined } : prev))
+                  setTaskBeingEdited((prev) => (prev ? { ...prev, dueDate: e.target.value ? new Date(e.target.value) : undefined } : prev))
                 }
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-gray-100"
               />
