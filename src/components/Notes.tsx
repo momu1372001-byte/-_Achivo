@@ -1,20 +1,15 @@
+// src/components/Notes.tsx
 import React, { useState } from "react";
 import { Plus, Trash2, Edit3, Save, X } from "lucide-react";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-}
+import { Note } from "../types";
 
 interface NotesProps {
   language: string;
+  notes: Note[];
+  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
 }
 
-const Notes: React.FC<NotesProps> = ({ language }) => {
-  const [notes, setNotes] = useLocalStorage<Note[]>("user-notes", []);
+const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -23,7 +18,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
 
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
-  // ✅ إضافة ملاحظة جديدة
+  // إضافة ملاحظة جديدة
   const addNote = () => {
     if (!newTitle.trim() && !newContent.trim()) return;
 
@@ -39,12 +34,12 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
     setNewContent("");
   };
 
-  // ✅ حذف ملاحظة
+  // حذف ملاحظة
   const deleteNote = (id: string) => {
     setNotes(notes.filter((n) => n.id !== id));
   };
 
-  // ✅ حفظ التعديلات
+  // حفظ التعديلات
   const saveEdit = (id: string) => {
     setNotes(
       notes.map((n) =>
@@ -60,7 +55,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h2 className="text-2xl font-bold mb-4">{t("📝 الملاحظات", "📝 Notes")}</h2>
 
-      {/* ✅ إضافة ملاحظة جديدة */}
+      {/* إضافة ملاحظة جديدة */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <input
           type="text"
@@ -84,7 +79,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
         </button>
       </div>
 
-      {/* ✅ عرض الملاحظات */}
+      {/* عرض الملاحظات */}
       <div className="space-y-4">
         {notes.length === 0 && (
           <p className="text-gray-500">{t("لا توجد ملاحظات", "No notes yet")}</p>
@@ -136,6 +131,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                     language === "ar" ? "ar-EG" : "en-US"
                   )}
                 </p>
+
                 <div className="flex gap-2 mt-3 justify-end">
                   <button
                     onClick={() => {
@@ -147,6 +143,7 @@ const Notes: React.FC<NotesProps> = ({ language }) => {
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
+
                   <button
                     onClick={() => deleteNote(note.id)}
                     className="p-1 text-red-600 hover:scale-110 transition-transform"
