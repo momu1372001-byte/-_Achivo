@@ -248,7 +248,7 @@ case "notes":
         setNotes={setNotes}
       />
     );
-    />;
+     
 
 
 
