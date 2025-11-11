@@ -71,11 +71,7 @@ const [language, setLanguage] = useLocalStorage<"ar" | "en">(
   "ar"
 );
 
-
-const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
-
-
-  // 🔒 كلمة المرور / قفل الجلسة
+  // 🔒 كلمة المرور
   const [appPassword, setAppPassword] = useLocalStorage<string | null>(
     "settings-app-password",
     null
@@ -114,73 +110,6 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
     };
     if (tasks.length > 0) fetchInsights();
   }, [tasks]);
-
-  // 🌓 الوضع الليلي في الـ <html>
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", !!darkMode);
-  }, [darkMode]);
-
-  // 🔁 ضبط لغة المستند (dir + lang)
-  useEffect(() => {
-    document.documentElement.setAttribute("lang", language === "ar" ? "ar" : "en");
-    document.documentElement.setAttribute("dir", language === "ar" ? "rtl" : "ltr");
-  }, [language]);
-
-
-
-
-
-
-
-
-// 🔙 التعامل مع زر الرجوع في الموبايل
-useEffect(() => {
-  const handleBackButton = (event: PopStateEvent) => {
-    event.preventDefault();
-
-    // لو عندك مودال مفتوح، نقفله أولاً
-    if (activeModal) {
-      setActiveModal(null);
-      return;
-    }
-
-    // لو المستخدم داخل تبويب غير الـ Dashboard نرجعه لها
-    if (activeTab !== "dashboard") {
-      setActiveTab("dashboard");
-      return;
-    }
-
-    // لو هو فعلاً في الـ Dashboard، نغلق التطبيق (في الموبايل فقط)
-    if (window.navigator.userAgent.includes("Android")) {
-      // هذا فقط يعمل في بيئة WebView أو تطبيق موبايل (Cordova, Capacitor ...)
-      (window as any).ReactNativeWebView?.postMessage("exitApp");
-    }
-  };
-
-  window.addEventListener("popstate", handleBackButton);
-
-  return () => {
-    window.removeEventListener("popstate", handleBackButton);
-  };
-}, [activeModal, activeTab]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // 🚪 بداية الجلسة
   useEffect(() => {
@@ -271,65 +200,42 @@ useEffect(() => {
   // التبويبات
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "dashboard":
-        return (
-          <>
-            <Dashboard 
-  tasks={tasks} 
-  goals={goals} 
-  categories={categories}
-  notes={notes}
-  setNotes={setNotes}
-  language={language as "ar" | "en"} 
-  onTaskUpdate={handleTaskUpdate}
-  onTaskDelete={handleTaskDelete}
-  onTaskAdd={handleTaskAdd}
-  onOpenGoals={() => setActiveTab("goals")}
-  onOpenAddTask={() => setActiveTab("tasks")} 
-  onOpenNotes={() => setActiveTab("notes")} // هذا مهم
+case "dashboard":
+  return (
+    <>
+      {/* ✅ الآن Dashboard يستقبل language */}
+      <Dashboard tasks={tasks} goals={goals} language={language} />
+      {aiInsights && (
+        <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
+          <h2 className="font-bold mb-2 text-blue-500">
+            🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
+        </div>
+      )}
+    </>
+  );
 
-/>
 
-            
-            
-            
-            {aiInsights && (
-              <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
-                <h2 className="font-bold mb-2 text-blue-500">
-                  🤖 {language === "ar" ? "تحليلات الذكاء الاصطناعي" : "AI Insights"}
-                </h2>
-                <p className="text-gray-700 dark:text-gray-300">{aiInsights}</p>
-              </div>
-            )}
-          </>
-        );
+  case "calculator":
+   return <Calculator language={language} />;
 
-      case "calculator":
-        return <Calculator />;
+
+case "notes":
+  return <Notes language={language} />;
+
+  
+  
+case "pomodoro":
+  return <PomodoroTimer language={language} />;
+
+
+
+  case "draw":
+    return <DrawingPad language={language} />;
 
       
-case "notes":
-    return (
-      <NotesAny
-        language={language}
-        notes={notes}
-        setNotes={setNotes}
-      />
-    );
-     
-
-
-
-
-
-
-      case "pomodoro":
-        return <PomodoroTimer language={language} />;
-
-      case "draw":
-        return <DrawingPad language={language} />;
-
-      case "tasks":
+       case "tasks":
         return (
           <TaskManager
             tasks={tasks}
@@ -359,25 +265,8 @@ case "notes":
         );
 
       default:
-         
-        
-    return    <Dashboard 
-  tasks={tasks} 
-  goals={goals} 
-  categories={categories}
-  notes={notes} 
-  setNotes={setNotes}
-  language={language} 
-  onTaskUpdate={handleTaskUpdate} 
-  onTaskDelete={handleTaskDelete} 
-  onTaskAdd={handleTaskAdd} 
-/>
-
-        
-    
-    
-      }
-
+        return <Dashboard tasks={tasks} goals={goals} language={language} />;
+    }
   };
 
   // المودالات

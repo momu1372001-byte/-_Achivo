@@ -1,4 +1,3 @@
-// src/components/Notes.tsx
 import React, { useState } from "react";
 import { Plus, Trash2, Edit3, Save, X } from "lucide-react";
 
@@ -13,7 +12,6 @@ interface NotesProps {
   language: string;
   notes: Note[];
   setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
-
 }
 
 const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
@@ -28,14 +26,12 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
   // إضافة ملاحظة جديدة
   const addNote = () => {
     if (!newTitle.trim() && !newContent.trim()) return;
-
     const newNote: Note = {
       id: Date.now().toString(),
       title: newTitle || t("بدون عنوان", "Untitled"),
       content: newContent,
       createdAt: new Date().toISOString(),
     };
-
     setNotes([...notes, newNote]);
     setNewTitle("");
     setNewContent("");
@@ -60,7 +56,9 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold mb-4">{t("📝 الملاحظات", "📝 Notes")}</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        {t("📝 الملاحظات", "📝 Notes")}
+      </h2>
 
       {/* إضافة ملاحظة جديدة */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
@@ -82,7 +80,8 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
           onClick={addNote}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded"
         >
-          <Plus className="w-4 h-4" /> {t("إضافة", "Add")}
+          <Plus className="w-4 h-4" />
+          {t("إضافة", "Add")}
         </button>
       </div>
 
@@ -91,7 +90,6 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
         {notes.length === 0 && (
           <p className="text-gray-500">{t("لا توجد ملاحظات", "No notes yet")}</p>
         )}
-
         {notes.map((note) => (
           <div
             key={note.id}
@@ -138,7 +136,6 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
                     language === "ar" ? "ar-EG" : "en-US"
                   )}
                 </p>
-
                 <div className="flex gap-2 mt-3 justify-end">
                   <button
                     onClick={() => {
@@ -150,7 +147,6 @@ const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
-
                   <button
                     onClick={() => deleteNote(note.id)}
                     className="p-1 text-red-600 hover:scale-110 transition-transform"
