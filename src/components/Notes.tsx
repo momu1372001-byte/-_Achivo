@@ -13,6 +13,7 @@ interface NotesProps {
   language: string;
   notes: Note[];
   setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
+
 }
 
 const Notes: React.FC<NotesProps> = ({ language, notes, setNotes }) => {

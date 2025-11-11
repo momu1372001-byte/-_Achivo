@@ -1,4 +1,3 @@
-// src/components/Dashboard.tsx
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, ClipboardList, PenTool, Clock, ArrowLeft } from "lucide-react";
@@ -40,6 +39,11 @@ interface DashboardProps {
    * دالة لتحويل المستخدم لصفحة إضافة المهمة (اختياري).
    */
   onOpenAddTask?: () => void;
+  /**
+   * دالة لتحويل المستخدم لصفحة تسجيل الملاحظات (اختياري).
+   * إن وُجدت ستستخدم بدلاً من فتح صفحة التسجيل الداخلية.
+   */
+  onOpenAddNote?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -55,6 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setNotes,
   onOpenGoals,
   onOpenAddTask,
+  onOpenAddNote,
 }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
@@ -69,7 +74,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       title: t("المهام", "Tasks"),
       value: tasks.length,
       icon: ClipboardList,
-      // تدرج متعدد لمحاولة جعل الألوان لامعة وجذابة
       color: "from-blue-500 via-indigo-500 to-violet-600",
       type: "tasks" as const,
     },
@@ -96,25 +100,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
   ].filter((f) => f.value > 0);
 
-  // حالتَي عرض الصفحات التفصيلية: أهداف أو مهام (ملء الشاشة)
+  // حالات عرض صفحات كاملة/تفصيلية
   const [showGoalStats, setShowGoalStats] = useState(false);
   const [showTaskStats, setShowTaskStats] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showAddNotePage, setShowAddNotePage] = useState(false);
 
-  // دعم زر الرجوع في الموبايل: نضيف حالة history عندما نفتح صفحة إحصائيات
+  // دعم زر الرجوع في الموبايل: نغلق أي صفحة مفتوحة عند popstate
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      // عند الضغط على زر الرجوع، نغلق أي صفحة إحصائيات مفتوحة
-      if (showGoalStats) {
-        setShowGoalStats(false);
+      if (showAddNotePage) {
+        setShowAddNotePage(false);
+      } else if (showNotes) {
+        setShowNotes(false);
       } else if (showTaskStats) {
         setShowTaskStats(false);
+      } else if (showGoalStats) {
+        setShowGoalStats(false);
       }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [showGoalStats, showTaskStats]);
+  }, [showGoalStats, showTaskStats, showNotes, showAddNotePage]);
 
-  // مساعدات تواريخ/حسابات
+  // ... (الجزء الخاص بالاحصائيات تبقى كما في كودك السابق) ...
   const isoDay = (d?: string | Date) => {
     if (!d) return "";
     const date = d instanceof Date ? d : new Date(d);
@@ -129,7 +138,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Math.max(1, diff + 1);
   };
 
-  // تحسب تقدم الهدف كما في مكون الأهداف لديك
   const calcGoalProgress = (g: any) => {
     if (!g?.startDate || !g?.endDate) return 0;
     const total = daysBetweenInclusive(g.startDate, g.endDate);
@@ -137,7 +145,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Math.min(100, Math.round((done / total) * 100));
   };
 
-  // ---------- إحصائيات الأهداف (كما سابقًا) ----------
   const goalStats = useMemo(() => {
     const total = (goals || []).length;
     const perGoal = (goals || []).map((g) => ({ ...g, __progress: calcGoalProgress(g) }));
@@ -156,7 +163,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       { name: t("غير منجز", "Not Completed"), value: total - completedCount },
     ];
 
-    // آخر 7 أيام: عدد المرات التي وُسمت فيها الأهداف كمكتملة في كل يوم (باستخدام completedDays)
     const today = new Date();
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -173,26 +179,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const GOAL_COLORS = ["#22c55e", "#e5e7eb"];
 
-  // ---------- إحصائيات المهام (الجديدة والمختلفة عن الأهداف) ----------
   const taskStats = useMemo(() => {
     const total = (tasks || []).length;
-
-    // حالات المهام
     const statusCounts = {
       todo: tasks.filter((t) => t.status === "todo").length,
       "in-progress": tasks.filter((t) => t.status === "in-progress").length,
       done: tasks.filter((t) => t.status === "done").length,
     };
 
-    // Pie data (حالة المهام)
     const taskPie = [
       { name: "Todo", value: statusCounts.todo },
       { name: "In Progress", value: statusCounts["in-progress"] },
       { name: "Done", value: statusCounts.done },
     ];
 
-    // Last 7 days: عدد المهام المنجزة (status === 'done') بحسب createdAt أو تاريخ الإضافة
-    // ملاحظة: الأفضل أن تضيف completedAt للحصر الدقيق؛ هنا نفترض أن مهمة أصبحت 'done' وكانت createdAt في نفس اليوم أو أنها أصبحت done وتم تحديثها (لو توفر completedAt استخدمه)
     const today = new Date();
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -200,14 +200,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const iso = d.toISOString().split("T")[0];
       const completed = tasks.filter((task) => {
         if (task.status !== "done") return false;
-        // إذا وُجد حقل completedAt استخدمه، وإلا نقارن createdAt كبديل
         const completedAt = (task as any).completedAt ? isoDay((task as any).completedAt) : isoDay(task.createdAt);
         return completedAt === iso;
       }).length;
       return { date: iso, completed };
     });
 
-    // Timeline: ترتيب المهام حسب dueDate (أقرب مواعيد أولاً) مع عرض الشريط البسيط الذي يعكس نسبة الإنجاز (هنا سنستخدم status -> done => 100, in-progress => 50, todo => 0)
     const timeline = (tasks || [])
       .map((t) => {
         const progress = t.status === "done" ? 100 : t.status === "in-progress" ? 50 : 0;
@@ -230,23 +228,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return { total, statusCounts, taskPie, last7Days, timeline };
   }, [tasks]);
 
-  const TASK_COLORS = ["#60a5fa", "#f59e0b", "#16a34a"]; // blue, amber, green
+  const TASK_COLORS = ["#60a5fa", "#f59e0b", "#16a34a"];
 
-  // فتح صفحة إحصائيات الهدف/المهام مع pushState لمدى رجوع الهاتف
   const openGoalStats = (open: boolean) => {
-    if (open) {
-      window.history.pushState({}, "goal-stats");
-    }
+    if (open) window.history.pushState({}, "goal-stats");
     setShowGoalStats(open);
   };
   const openTaskStats = (open: boolean) => {
-    if (open) {
-      window.history.pushState({}, "task-stats");
-    }
+    if (open) window.history.pushState({}, "task-stats");
     setShowTaskStats(open);
   };
 
-  // ---------- عرض صفحة إحصائيات الأهداف (ملء الشاشة) ----------
+  // --- فتح صفحة الملاحظات (عرض القائمة) ---
+  const openNotes = (open: boolean) => {
+    if (open) window.history.pushState({}, "notes-view");
+    setShowNotes(open);
+    // عند فتح عرض الملاحظات نتأكد أن صفحة الإضافة مغلقة
+    if (!open) setShowAddNotePage(false);
+  };
+
+  // --- فتح صفحة إضافة ملاحظة كاملة ---
+  const openAddNotePage = (open: boolean) => {
+    if (open) window.history.pushState({}, "notes-add");
+    setShowAddNotePage(open);
+    // أغلق view القائمة إن فتحت صفحة الاضافة كصفحة منفصلة
+    if (open) setShowNotes(false);
+  };
+
+  // ---------- عرض إحصائيات الأهداف (كما سابقًا) ----------
   if (showGoalStats) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -254,7 +263,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <button
             onClick={() => {
               openGoalStats(false);
-              // push a state so back button behavior stays consistent
               try { window.history.pushState({}, ""); } catch {}
             }}
             className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
@@ -268,7 +276,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Pie Chart */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">{t("نسبة الإنجاز", "Completion Rate")}</h3>
@@ -299,7 +306,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </ResponsiveContainer>
           </div>
 
-          {/* Line Chart */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h3 className="text-lg font-bold mb-4">{t("تطور الأهداف الأسبوعي", "Weekly Goal Progress")}</h3>
             <ResponsiveContainer width="100%" height={220}>
@@ -314,7 +320,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Timeline */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mt-6">
           <h3 className="text-lg font-bold mb-4">{t("الخط الزمني للأهداف", "Goals Timeline")}</h3>
           <ul className="space-y-3">
@@ -339,7 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  // ---------- صفحة إحصائيات المهام (ملء الشاشة، بتصميم "شياكة") ----------
+  // ---------- صفحة إحصائيات المهام ----------
   if (showTaskStats) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -358,7 +363,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Tasks status pie */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">{t("حالة المهام", "Tasks Status")}</h3>
@@ -404,7 +408,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Line (completed over last 7 days) */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h3 className="text-lg font-bold mb-4">{t("المهام المنجزة هذا الأسبوع", "Completed This Week")}</h3>
             <ResponsiveContainer width="100%" height={220}>
@@ -423,7 +426,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Tasks timeline */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mt-6">
           <h3 className="text-lg font-bold mb-4">{t("الخط الزمني للمهام", "Tasks Timeline")}</h3>
           <ul className="space-y-3">
@@ -437,7 +439,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="text-sm text-gray-500">{tItem.status}</div>
                 </div>
 
-                {/* progress bar -- شياكة مختلفة */}
                 <div className="w-full h-3 bg-gradient-to-r from-gray-200 to-gray-200 dark:from-gray-700 dark:to-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-3 rounded-full shadow-inner`}
@@ -456,7 +457,75 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  // ---------- واجهة الداشبورد الرئيسية (كما الأصلي مع تعديلات طفيفة للحفاظ على السلوك) ----------
+  // ---------- صفحة عرض الملاحظات فقط (قائمة الملاحظات) ----------
+  if (showNotes) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => {
+              openNotes(false);
+              try { window.history.pushState({}, ""); } catch {}
+            }}
+            className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t("رجوع", "Back")}
+          </button>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+            {t("الملاحظات", "Notes")}
+          </h2>
+        </div>
+
+        {/* Notes component — نمرّر hideCreate=true حتى نعرض القائمة فقط */}
+        <Notes language={language} notes={notes} setNotes={setNotes} hideCreate={true} />
+
+        {/* زر للانتقال لصفحة تسجيل الملاحظات */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              if (onOpenAddNote) {
+                onOpenAddNote();
+              } else {
+                openAddNotePage(true);
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow transition"
+          >
+            {t("تسجيل ملاحظة جديدة", "Register New Note")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- صفحة إضافة الملاحظة (صفحة كاملة) ----------
+  if (showAddNotePage) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => {
+              openAddNotePage(false);
+              try { window.history.pushState({}, ""); } catch {}
+            }}
+            className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t("رجوع", "Back")}
+          </button>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("تسجيل ملاحظة جديدة", "Add Note")}</h2>
+        </div>
+
+        {/* Notes component في وضع إظهار نموذج الإضافة فقط */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+          <Notes language={language} notes={notes} setNotes={setNotes} onlyCreate={true} />
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- واجهة الداشبورد الرئيسية ----------
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
       {!hasData ? (
@@ -485,31 +554,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </motion.div>
       ) : (
         <div className="w-full max-w-6xl">
-          {/* كروت الميزات */}
-          {/* عرض كارتين في الموبايل: grid-cols-2 على المستوى الأساسي */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
 
-              // سلوك النقر: الأهداف/المهام تفتح عرض الإحصائيات (toggle)، الباقي يتصرف كما في السابق أو يمكنك إضافة سلوك آخر
               const handleClick = () => {
                 if (feature.type === "goals") {
-                  // toggle
-                  if (showGoalStats) {
-                    openGoalStats(false);
-                  } else {
-                    openGoalStats(true);
-                  }
+                  if (showGoalStats) openGoalStats(false);
+                  else openGoalStats(true);
                 } else if (feature.type === "tasks") {
-                  if (showTaskStats) {
-                    openTaskStats(false);
-                  } else {
-                    openTaskStats(true);
-                  }
+                  if (showTaskStats) openTaskStats(false);
+                  else openTaskStats(true);
+                } else if (feature.type === "notes") {
+                  // **هنا**: عند الضغط على بطاقة الملاحظات نفتح "عرض الملاحظات" (قائمة) وليس صفحة الإضافة
+                  openNotes(true);
                 } else {
-                  // للحالات البسيطة (notes, pomodoro) يمكن أن تفتح داخل الداشبورد أو تفعّل تبويب خارجي
-                  // نتركها بدون تغيير — لاحقًا يمكنك إضافة setSelectedFeature لتضمين TaskManager/Notes داخل الداشبورد كما تريد
-                  // هنا مجرد مثال: لا نفعل شيئًا أو يمكننا فتح المكون داخل الداشبورد
+                  // pomodoro أو غيره - لا يتغير الآن
                 }
               };
 
@@ -524,7 +584,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onClick={handleClick}
                   className={`aspect-square p-6 rounded-2xl shadow-lg bg-gradient-to-br ${feature.color} text-white cursor-pointer relative overflow-hidden`}
                 >
-                  {/* Overlay لمعان خفيف */}
                   <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute -top-6 -left-10 w-56 h-56 rounded-full bg-white/10 blur-3xl opacity-30 transform rotate-45 animate-pulse" />
                     <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-white/6 blur-xl opacity-20" />
@@ -542,8 +601,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             })}
           </div>
 
-          {/* لو أردت تضمين مكوّن TaskManager أو Notes داخل الداشبورد عند الضغط على كارت معين،
-              يمكنك تعديل الجزء التالي لعرضهما — الآن نحن نفتح الصفحات الكاملة للإحصائيات أعلاه */}
+          {/* إضافات مستقبلية — TaskManager/Notes داخل الداشبورد يمكن إضافتها هنا */}
         </div>
       )}
     </div>
