@@ -60,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const features = [
     {
-      title: t("المهام", "Tasks"),
+      title: t(" المهام", "Tasks"),
       value: tasks.length,
       icon: ClipboardList,
       color: "from-blue-500 via-indigo-500 to-violet-600",
