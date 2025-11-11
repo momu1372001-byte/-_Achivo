@@ -39,6 +39,7 @@ const AppContent: React.FC = () => {
   const { theme } = useTheme(); // موجود في ThemeContext الذي وضعتَه
   const [activeTab, setActiveTab] = useState<Tabs>("dashboard");
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+const [pomodoroSessions, setPomodoroSessions] = useState(0);
 
   // ⚙️ إعدادات عامة
   const [darkMode, setDarkMode] = useLocalStorage<boolean>(
@@ -211,7 +212,26 @@ case "dashboard":
   return (
     <>
       {/* ✅ الآن Dashboard يستقبل language */}
-      <Dashboard tasks={tasks} goals={goals} language={language} />
+      <Dashboard
+  tasks={tasks}
+  goals={goals}
+  categories={categories}
+  notes={notes}
+  pomodoroSessions={pomodoroSessions}
+  language={language}
+  onTaskUpdate={handleTaskUpdate}
+  onTaskDelete={handleTaskDelete}
+  onTaskAdd={handleTaskAdd}
+  setNotes={setNotes}
+  onOpenGoals={() => setActiveTab("goals")}
+  onOpenAddTask={() => setActiveTab("tasks")}
+  onOpenNotes={() => setActiveTab("notes")}
+/>
+
+      
+      
+      
+      
       {aiInsights && (
         <div className="m-4 p-4 border rounded-lg shadow border-blue-500">
           <h2 className="font-bold mb-2 text-blue-500">
@@ -222,6 +242,15 @@ case "dashboard":
       )}
     </>
   );
+
+
+
+
+
+
+
+
+
 
 
   case "calculator":

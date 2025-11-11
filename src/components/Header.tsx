@@ -1,10 +1,13 @@
 import React from "react";
+import { motion } from "framer-motion";
 
 interface HeaderProps {
   language: "ar" | "en";
 }
 
 export const Header: React.FC<HeaderProps> = ({ language }) => {
+  const logo = "Achievo".split("");
+
   return (
     <header
       className="
@@ -17,13 +20,26 @@ export const Header: React.FC<HeaderProps> = ({ language }) => {
       "
       dir={language === "ar" ? "rtl" : "ltr"}
       style={{
-        paddingTop: "0.25rem",
-        paddingBottom: "0.25rem",
-        lineHeight: 0,
-        height: "auto",
+        paddingTop: "1rem",
+        paddingBottom: "1rem",
+        height: "80px", // زيادة ارتفاع الهيدر
       }}
     >
-      {/* تمت إزالة اللوجو */}
+      <h1
+        dir="ltr" // مهم جداً لتجنب قلب النص
+        className="flex space-x-2 text-4xl font-extrabold text-gray-800 dark:text-gray-200"
+      >
+        {logo.map((char, index) => (
+          <motion.span
+            key={index}
+            animate={{ y: [0, -10, 0] }} // حركة صعود وهبوط لكل حرف
+            transition={{ repeat: Infinity, duration: 1.2, delay: index * 0.1 }}
+            className="inline-block"
+          >
+            {char}
+          </motion.span>
+        ))}
+      </h1>
     </header>
   );
 };
