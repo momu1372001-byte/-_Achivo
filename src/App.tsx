@@ -126,6 +126,62 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
     document.documentElement.setAttribute("dir", language === "ar" ? "rtl" : "ltr");
   }, [language]);
 
+
+
+
+
+
+
+  
+// 🔙 التعامل مع زر الرجوع في الموبايل
+useEffect(() => {
+  const handleBackButton = (event: PopStateEvent) => {
+    event.preventDefault();
+
+    // لو عندك مودال مفتوح، نقفله أولاً
+    if (activeModal) {
+      setActiveModal(null);
+      return;
+    }
+
+    // لو المستخدم داخل تبويب غير الـ Dashboard نرجعه لها
+    if (activeTab !== "dashboard") {
+      setActiveTab("dashboard");
+      return;
+    }
+
+    // لو هو فعلاً في الـ Dashboard، نغلق التطبيق (في الموبايل فقط)
+    if (window.navigator.userAgent.includes("Android")) {
+      // هذا فقط يعمل في بيئة WebView أو تطبيق موبايل (Cordova, Capacitor ...)
+      (window as any).ReactNativeWebView?.postMessage("exitApp");
+    }
+  };
+
+  window.addEventListener("popstate", handleBackButton);
+
+  return () => {
+    window.removeEventListener("popstate", handleBackButton);
+  };
+}, [activeModal, activeTab]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // 🚪 بداية الجلسة
   useEffect(() => {
     if (appPassword) setAppLockedSession(true);
