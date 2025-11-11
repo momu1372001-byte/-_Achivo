@@ -1,8 +1,7 @@
+// src/components/Dashboard.tsx
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, ClipboardList, PenTool, Clock, ArrowLeft } from "lucide-react";
-import TaskManager from "./TaskManager";
-import Notes from "./Notes";
 import { Task, Goal, Category } from "../types";
 
 // Recharts
@@ -23,27 +22,17 @@ interface DashboardProps {
   tasks: Task[];
   goals: Goal[];
   categories: Category[];
-  notes: any[];
+  notes: any[]; // array of notes
   pomodoroSessions?: number;
   language: "ar" | "en";
   onTaskUpdate: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskAdd: (task: Omit<Task, "id">) => void;
   setNotes: React.Dispatch<React.SetStateAction<any[]>>;
-  /**
-   * دالة لتحويل المستخدم لصفحة الأهداف الكاملة أو فتح مودال الإضافة.
-   * مرّر () => setActiveTab("goals") أو أي دالة تناسبك.
-   */
   onOpenGoals?: () => void;
-  /**
-   * دالة لتحويل المستخدم لصفحة إضافة المهمة (اختياري).
-   */
   onOpenAddTask?: () => void;
-  /**
-   * دالة لتحويل المستخدم لصفحة تسجيل الملاحظات (اختياري).
-   * إن وُجدت ستستخدم بدلاً من فتح صفحة التسجيل الداخلية.
-   */
-  onOpenAddNote?: () => void;
+  /** دالة لتحويل المستخدم إلى صفحة الملاحظات (تستخدمها زر "تسجيل ملاحظة") */
+  onOpenNotes?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -59,7 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setNotes,
   onOpenGoals,
   onOpenAddTask,
-  onOpenAddNote,
+  onOpenNotes,
 }) => {
   const t = (ar: string, en: string) => (language === "ar" ? ar : en);
 
@@ -100,30 +89,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
   ].filter((f) => f.value > 0);
 
-  // حالات عرض صفحات كاملة/تفصيلية
+  // صفحات الإحصائيات
   const [showGoalStats, setShowGoalStats] = useState(false);
   const [showTaskStats, setShowTaskStats] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
-  const [showAddNotePage, setShowAddNotePage] = useState(false);
 
-  // دعم زر الرجوع في الموبايل: نغلق أي صفحة مفتوحة عند popstate
+  // عرض ملاحظات داخل الداشبورد (عند الضغط على كارت الملاحظات)
+  const [showNotesInline, setShowNotesInline] = useState(false);
+
+  // دعم زر الرجوع لإغلاق أي view مفتوح
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      if (showAddNotePage) {
-        setShowAddNotePage(false);
-      } else if (showNotes) {
-        setShowNotes(false);
-      } else if (showTaskStats) {
-        setShowTaskStats(false);
+      if (showNotesInline) {
+        setShowNotesInline(false);
       } else if (showGoalStats) {
         setShowGoalStats(false);
+      } else if (showTaskStats) {
+        setShowTaskStats(false);
       }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [showGoalStats, showTaskStats, showNotes, showAddNotePage]);
+  }, [showNotesInline, showGoalStats, showTaskStats]);
 
-  // ... (الجزء الخاص بالاحصائيات تبقى كما في كودك السابق) ...
+  // تواريخ مساعدة
   const isoDay = (d?: string | Date) => {
     if (!d) return "";
     const date = d instanceof Date ? d : new Date(d);
@@ -145,24 +133,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Math.min(100, Math.round((done / total) * 100));
   };
 
+  // ---------- إحصائيات الأهداف ----------
   const goalStats = useMemo(() => {
     const total = (goals || []).length;
     const perGoal = (goals || []).map((g) => ({ ...g, __progress: calcGoalProgress(g) }));
     const completedCount = perGoal.filter((g) => g.__progress >= 100).length;
     const avgProgress = total === 0 ? 0 : Math.round(perGoal.reduce((s, g) => s + (g.__progress || 0), 0) / total);
-
     const futureEnds = (goals || [])
       .map((g) => g.endDate)
       .filter(Boolean)
       .map((d) => new Date(d as string))
       .sort((a, b) => Number(a) - Number(b));
     const nearest = futureEnds.length > 0 ? futureEnds[0].toISOString().split("T")[0] : null;
-
     const pieData = [
       { name: t("منجز", "Completed"), value: completedCount },
       { name: t("غير منجز", "Not Completed"), value: total - completedCount },
     ];
-
     const today = new Date();
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -171,14 +157,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const completed = perGoal.filter((g) => (g.completedDays || []).includes(iso)).length;
       return { date: iso, completed };
     });
-
     const timeline = perGoal.slice().sort((a, b) => new Date(a.startDate || "").getTime() - new Date(b.startDate || "").getTime());
-
     return { total, completedCount, avgProgress, nearest, perGoal, pieData, last7Days, timeline };
   }, [goals, language]);
 
   const GOAL_COLORS = ["#22c55e", "#e5e7eb"];
 
+  // ---------- إحصائيات المهام ----------
   const taskStats = useMemo(() => {
     const total = (tasks || []).length;
     const statusCounts = {
@@ -186,13 +171,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
       "in-progress": tasks.filter((t) => t.status === "in-progress").length,
       done: tasks.filter((t) => t.status === "done").length,
     };
-
     const taskPie = [
       { name: "Todo", value: statusCounts.todo },
       { name: "In Progress", value: statusCounts["in-progress"] },
       { name: "Done", value: statusCounts.done },
     ];
-
     const today = new Date();
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -205,7 +188,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }).length;
       return { date: iso, completed };
     });
-
     const timeline = (tasks || [])
       .map((t) => {
         const progress = t.status === "done" ? 100 : t.status === "in-progress" ? 50 : 0;
@@ -224,7 +206,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const bd = b.dueDate ? new Date(b.dueDate).getTime() : 0;
         return ad - bd;
       });
-
     return { total, statusCounts, taskPie, last7Days, timeline };
   }, [tasks]);
 
@@ -239,26 +220,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setShowTaskStats(open);
   };
 
-  // --- فتح صفحة الملاحظات (عرض القائمة) ---
-  const openNotes = (open: boolean) => {
-    if (open) window.history.pushState({}, "notes-view");
-    setShowNotes(open);
-    // عند فتح عرض الملاحظات نتأكد أن صفحة الإضافة مغلقة
-    if (!open) setShowAddNotePage(false);
+  // فتح عرض الملاحظات داخل الداشبورد (inline)
+  const openNotesInline = (open: boolean) => {
+    if (open) {
+      try { window.history.pushState({}, "notes-inline"); } catch {}
+    }
+    setShowNotesInline(open);
   };
 
-  // --- فتح صفحة إضافة ملاحظة كاملة ---
-  const openAddNotePage = (open: boolean) => {
-    if (open) window.history.pushState({}, "notes-add");
-    setShowAddNotePage(open);
-    // أغلق view القائمة إن فتحت صفحة الاضافة كصفحة منفصلة
-    if (open) setShowNotes(false);
+  // حذف ملاحظة (يعمل مباشرة من العرض المختصر)
+  const handleDeleteNote = (id: string) => {
+    setNotes(notes.filter((n) => n.id !== id));
   };
 
-  // ---------- عرض إحصائيات الأهداف (كما سابقًا) ----------
+  // ---------- صفحات الإحصائيات (كما سابقًا) ----------
   if (showGoalStats) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+        {/* ...نفس كود عرض إحصائيات الأهداف (احتفظت به كما كان) */}
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => {
@@ -270,9 +249,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <ArrowLeft className="w-4 h-4" />
             {t("رجوع", "Back")}
           </button>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-            {t("إحصائيات الأهداف", "Goals Statistics")}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("إحصائيات الأهداف", "Goals Statistics")}</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -286,6 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {t("إضافة هدف", "Add Goal")}
               </button>
             </div>
+
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
@@ -331,10 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <span className="text-xs">{g.__progress}%</span>
                 </div>
                 <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-4 bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500"
-                    style={{ width: `${g.__progress}%` }}
-                  />
+                  <div className="h-4 bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500" style={{ width: `${g.__progress}%` }} />
                 </div>
               </li>
             ))}
@@ -344,7 +319,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  // ---------- صفحة إحصائيات المهام ----------
   if (showTaskStats) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -373,6 +347,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {t("إضافة مهمة", "Add Task")}
               </button>
             </div>
+
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
@@ -457,103 +432,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  // ---------- صفحة عرض الملاحظات فقط (قائمة الملاحظات) ----------
-  if (showNotes) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => {
-              openNotes(false);
-              try { window.history.pushState({}, ""); } catch {}
-            }}
-            className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t("رجوع", "Back")}
-          </button>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-            {t("الملاحظات", "Notes")}
-          </h2>
-        </div>
-
-        {/* Notes component — نمرّر hideCreate=true حتى نعرض القائمة فقط */}
-        <Notes language={language} notes={notes} setNotes={setNotes} hideCreate={true} />
-
-        {/* زر للانتقال لصفحة تسجيل الملاحظات */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => {
-              if (onOpenAddNote) {
-                onOpenAddNote();
-              } else {
-                openAddNotePage(true);
-              }
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow transition"
-          >
-            {t("تسجيل ملاحظة جديدة", "Register New Note")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ---------- صفحة إضافة الملاحظة (صفحة كاملة) ----------
-  if (showAddNotePage) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => {
-              openAddNotePage(false);
-              try { window.history.pushState({}, ""); } catch {}
-            }}
-            className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t("رجوع", "Back")}
-          </button>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("تسجيل ملاحظة جديدة", "Add Note")}</h2>
-        </div>
-
-        {/* Notes component في وضع إظهار نموذج الإضافة فقط */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-          <Notes language={language} notes={notes} setNotes={setNotes} onlyCreate={true} />
-        </div>
-      </div>
-    );
-  }
-
-  // ---------- واجهة الداشبورد الرئيسية ----------
+  // ---------- الواجهة الرئيسية للداشبورد ----------
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
       {!hasData ? (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center"
-        >
-          <motion.div
-            className="text-6xl mb-4"
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            ✨
-          </motion.div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
-            {t("ابدأ رحلتك اليوم!", "Start your journey today!")}
-          </h2>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center">
+          <motion.div className="text-6xl mb-4" animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }}>✨</motion.div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">{t("ابدأ رحلتك اليوم!", "Start your journey today!")}</h2>
           <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
-            {t(
-              "أضف هدفًا أو مهمة أو دوّن فكرة جديدة لتبدأ في تحقيق إنتاجيتك القصوى 💪",
-              "Add a goal, a task, or jot down a new idea to unlock your productivity 💪"
-            )}
+            {t("أضف هدفًا أو مهمة أو دوّن فكرة جديدة لتبدأ في تحقيق إنتاجيتك القصوى 💪", "Add a goal, a task, or jot down a new idea to unlock your productivity 💪")}
           </p>
         </motion.div>
       ) : (
         <div className="w-full max-w-6xl">
+          {/* كروت الميزات */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
@@ -566,10 +458,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   if (showTaskStats) openTaskStats(false);
                   else openTaskStats(true);
                 } else if (feature.type === "notes") {
-                  // **هنا**: عند الضغط على بطاقة الملاحظات نفتح "عرض الملاحظات" (قائمة) وليس صفحة الإضافة
-                  openNotes(true);
+                  // هنا السلوك المطلوب: عرض الملاحظات داخل الداشبورد
+                  if (showNotesInline) openNotesInline(false);
+                  else openNotesInline(true);
                 } else {
-                  // pomodoro أو غيره - لا يتغير الآن
+                  // pomodoro or others - no-op for now
                 }
               };
 
@@ -601,7 +494,70 @@ export const Dashboard: React.FC<DashboardProps> = ({
             })}
           </div>
 
-          {/* إضافات مستقبلية — TaskManager/Notes داخل الداشبورد يمكن إضافتها هنا */}
+          {/* ----- إذا اختار المستخدم عرض الملاحظات داخل الداشبورد ----- */}
+          {showNotesInline && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => openNotesInline(false)}
+                    className="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-2 rounded"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    {t("رجوع", "Back")}
+                  </button>
+                  <h3 className="text-lg font-bold">{t("الملاحظات", "Notes")}</h3>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => (onOpenNotes ? onOpenNotes() : alert(language === "ar" ? "افتح صفحة الملاحظات لتسجيل ملاحظة جديدة." : "Open the Notes page to register a new note."))}
+                    className="px-3 py-2 rounded bg-blue-600 text-white"
+                  >
+                    {t("تسجيل ملاحظة", "Add Note")}
+                  </button>
+                </div>
+              </div>
+
+              {/* عرض بسيطة للملاحظات مع إمكانية الحذف السريع */}
+              <div className="space-y-4">
+                {notes.length === 0 ? (
+                  <p className="text-gray-500">{t("لا توجد ملاحظات", "No notes yet")}</p>
+                ) : (
+                  notes.map((note: any) => (
+                    <div key={note.id} className="border rounded p-4 bg-gray-50 dark:bg-gray-900">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold">{note.title}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap mt-1">{note.content}</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {t("أضيفت في", "Created at")}: {note.createdAt ? new Date(note.createdAt).toLocaleString(language === "ar" ? "ar-EG" : "en-US") : ""}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={() => (onOpenNotes ? onOpenNotes() : alert(language === "ar" ? "افتح صفحة الملاحظات لتحرير هذه الملاحظة." : "Open the Notes page to edit this note."))}
+                            className="text-sm px-2 py-1 bg-yellow-200 rounded"
+                          >
+                            {t("تحرير", "Edit")}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-sm px-2 py-1 bg-red-100 rounded text-red-600"
+                          >
+                            {t("حذف", "Delete")}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* إن أردت تضمين مكونات إضافية داخل الداشبورد مكان الملاحظات، اترك مساحة هنا */}
         </div>
       )}
     </div>

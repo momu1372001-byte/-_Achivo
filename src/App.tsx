@@ -285,7 +285,9 @@ useEffect(() => {
   onTaskDelete={handleTaskDelete}
   onTaskAdd={handleTaskAdd}
   onOpenGoals={() => setActiveTab("goals")}
-   onOpenAddTask={() => setActiveTab("tasks")} 
+  onOpenAddTask={() => setActiveTab("tasks")} 
+  onOpenNotes={() => setActiveTab("notes")} // هذا مهم
+
 />
 
             
