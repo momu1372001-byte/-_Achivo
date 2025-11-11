@@ -132,7 +132,7 @@ const [notes, setNotes] = useLocalStorage<Note[]>("productivity-notes", []);
 
 
 
-  
+
 // 🔙 التعامل مع زر الرجوع في الموبايل
 useEffect(() => {
   const handleBackButton = (event: PopStateEvent) => {

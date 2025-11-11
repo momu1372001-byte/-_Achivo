@@ -69,28 +69,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
       title: t("المهام", "Tasks"),
       value: tasks.length,
       icon: ClipboardList,
-      color: "from-blue-500 to-indigo-500",
+      // تدرج متعدد لمحاولة جعل الألوان لامعة وجذابة
+      color: "from-blue-500 via-indigo-500 to-violet-600",
       type: "tasks" as const,
     },
     {
       title: t("الأهداف", "Goals"),
       value: goals.length,
       icon: Target,
-      color: "from-green-500 to-emerald-500",
+      color: "from-green-400 via-emerald-500 to-teal-500",
       type: "goals" as const,
     },
     {
       title: t("الملاحظات", "Notes"),
       value: notes.length,
       icon: PenTool,
-      color: "from-purple-500 to-pink-500",
+      color: "from-pink-500 via-fuchsia-500 to-purple-600",
       type: "notes" as const,
     },
     {
       title: t("جلسات التركيز", "Pomodoro Sessions"),
       value: pomodoroSessions,
       icon: Clock,
-      color: "from-orange-500 to-red-500",
+      color: "from-orange-400 via-rose-500 to-red-600",
       type: "pomodoro" as const,
     },
   ].filter((f) => f.value > 0);
@@ -485,7 +486,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
       ) : (
         <div className="w-full max-w-6xl">
           {/* كروت الميزات */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* عرض كارتين في الموبايل: grid-cols-2 على المستوى الأساسي */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
 
@@ -514,19 +516,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
               return (
                 <motion.div
                   key={index}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.06 }}
                   whileTap={{ scale: 0.98 }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`p-6 rounded-2xl shadow-lg bg-gradient-to-br ${feature.color} text-white cursor-pointer`}
+                  transition={{ delay: index * 0.06 }}
                   onClick={handleClick}
+                  className={`aspect-square p-6 rounded-2xl shadow-lg bg-gradient-to-br ${feature.color} text-white cursor-pointer relative overflow-hidden`}
                 >
-                  <div className="flex justify-between items-center">
-                    <Icon className="w-10 h-10 opacity-90" />
-                    <span className="text-4xl font-bold">{feature.value}</span>
+                  {/* Overlay لمعان خفيف */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -top-6 -left-10 w-56 h-56 rounded-full bg-white/10 blur-3xl opacity-30 transform rotate-45 animate-pulse" />
+                    <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-white/6 blur-xl opacity-20" />
                   </div>
-                  <p className="mt-3 text-lg font-medium">{feature.title}</p>
+
+                  <div className="relative z-10 flex flex-col justify-between h-full">
+                    <div className="flex justify-between items-center">
+                      <Icon className="w-10 h-10 opacity-95 drop-shadow-lg" />
+                      <span className="text-4xl font-bold drop-shadow-md">{feature.value}</span>
+                    </div>
+                    <p className="mt-3 text-lg font-medium drop-shadow-sm">{feature.title}</p>
+                  </div>
                 </motion.div>
               );
             })}

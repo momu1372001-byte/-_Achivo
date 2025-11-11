@@ -15,7 +15,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Task, Category } from "../types";
-import { useNavigate } from "react-router-dom"; // ✅ أضفنا useNavigate
 
 interface TaskManagerProps {
   tasks: Task[];
@@ -44,16 +43,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   minimalView = false,
   language = "ar",
 }) => {
-     const navigate = useNavigate(); // ✅ استخدمنا useNavigate
-
-const handleGoBack = () => {
-  if (window.history.length > 1) {
-    navigate(-1);
-  } else {
-    navigate("/"); // fallback للصفحة الرئيسية
-  }
-};
-
+     
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -196,29 +186,9 @@ const handleGoBack = () => {
       <div className="mb-4">
         
         
-        <button
-        onClick={handleGoBack}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        {language === "ar" ? "رجوع" : "Back"}
-      </button>
-
-      
-
-        
-        
-        
-        
-        
         
 
-
-
-
-
-
-        
+       
       </div>
       
       
