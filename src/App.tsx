@@ -92,6 +92,13 @@ const [language, setLanguage] = useLocalStorage<"ar" | "en">(
     initialGoals
   );
 
+// 📝 إدارة الملاحظات
+const [notes, setNotes] = useLocalStorage<Note[]>(
+  "productivity-notes",
+  []
+);
+
+
   // 🤖 AI Insights (محاولة اتصال محليّ بسيرفر AI)
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   useEffect(() => {
@@ -221,10 +228,11 @@ case "dashboard":
    return <Calculator language={language} />;
 
 
-case "notes":
-  return <Notes language={language} />;
 
-  
+
+case "notes":
+  return <Notes language={language} notes={notes} setNotes={setNotes} />;
+
   
 case "pomodoro":
   return <PomodoroTimer language={language} />;
